@@ -5,6 +5,12 @@ async function createRepair(data) {
   const url =
     `${config.ragic.baseUrl}?api&version=2025-01-01`;
 
+  if (!config.ragic.apiKey) {
+    throw new Error(
+      "Render 尚未設定 RAGIC_API_KEY"
+    );
+  }
+
   const payload = {};
 
   payload[config.ragic.fields.reporter] =
@@ -25,29 +31,31 @@ async function createRepair(data) {
   payload[config.ragic.fields.updatedAt] =
     new Date().toISOString();
 
-  console.log("正在建立 Ragic 案件", {
-    reporter: data.reporter,
-    equipment: data.equipment,
-    priority: data.priority
-  });
+  console.log(
+    "正在建立 Ragic 案件:",
+    JSON.stringify({
+      reporter: data.reporter,
+      equipment: data.equipment,
+      priority: data.priority
+    })
+  );
 
   const response = await axios.post(
     url,
     payload,
     {
-      auth: {
-        username: config.ragic.apiKey,
-        password: ""
-      },
       headers: {
-        "Content-Type": "application/json"
+        Authorization:
+          `Basic ${config.ragic.apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json"
       },
       timeout: 15000
     }
   );
 
   console.log(
-    "Ragic 建立結果:",
+    "Ragic API 回傳:",
     JSON.stringify(response.data)
   );
 
@@ -56,7 +64,8 @@ async function createRepair(data) {
     response.data.status === "ERROR"
   ) {
     throw new Error(
-      response.data.msg || "Ragic 建立案件失敗"
+      response.data.msg ||
+      "Ragic 建立案件失敗"
     );
   }
 
