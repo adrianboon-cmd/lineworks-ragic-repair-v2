@@ -122,3 +122,72 @@ async function submitRepair() {
         alert("建立失敗");
     }
 }
+
+async function queryRepair() {
+
+    const ticketNumber =
+        document.getElementById(
+            "ticketNumber"
+        ).value;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/repairs/${ticketNumber}`
+            );
+
+        const result =
+            await response.json();
+
+        if (!result.success) {
+
+            alert("找不到案件");
+
+            return;
+        }
+
+        const record =
+            result.record;
+
+        document.getElementById(
+            "queryResult"
+        ).innerHTML = `
+
+        <hr>
+
+        <p>
+        <b>案件編號：</b>
+        ${record["1054238"] || ""}
+        </p>
+
+        <p>
+        <b>案件狀態：</b>
+        ${record["1054237"] || ""}
+        </p>
+
+        <p>
+        <b>派工人員：</b>
+        ${record["1054331"] || ""}
+        </p>
+
+        <p>
+        <b>預計處理日期：</b>
+        ${record["1054332"] || ""}
+        </p>
+
+        <p>
+        <b>維修進度：</b>
+        ${record["1054333"] || ""}
+        </p>
+
+        `;
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("查詢失敗");
+
+    }
+}
