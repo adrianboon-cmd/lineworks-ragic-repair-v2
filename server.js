@@ -6,6 +6,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(express.static("public"));
+
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -18,11 +20,13 @@ app.get("/", (req, res) => {
 });
 
 app.get("/app", (req, res) => {
-  res.send("WOFF App Ready");
+  res.sendFile(
+    path.join(__dirname , "public" , "index.html")
+  );
 });
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT , () => {
   console.log(`Server running on ${PORT}`);
 });
