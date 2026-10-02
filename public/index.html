@@ -7,7 +7,9 @@
 
     <title>設備報修系統</title>
 
-    <link rel="stylesheet" href="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.jsd>
+    <link rel="
+    <script src="https://static.worksmobile.net/static/wm/woff/edgeript>
+</head>
 
 <body>
 
@@ -15,48 +17,28 @@
 
         <div class="header">
             <h1>🔧 設備報修系統</h1>
-            <p>LINE WORKS × Ragic 維修管理平台</p>
+            <p>LINE WORKS × Ragic 報修平台</p>
         </div>
 
-        <div class="menu">
+        <div class="welcome-card">
 
-            <button class="menu-btn repair"
+            <h2>歡迎使用</h2>
+
+            <p>
+                若設備發生異常，請點擊下方按鈕建立報修案件。
+            </p>
+
+            <button
+                class="repair-btn"
                 onclick="showRepair()">
+
                 📝 我要報修
-            </button>
 
-            <button class="menu-btn status"
-                onclick="showStatus()">
-                📋 進度查詢
-            </button>
-
-            <button class="menu-btn dispatch"
-                onclick="showDispatch()">
-                👨‍🔧 維修派工
             </button>
 
         </div>
 
-        <div id="content">
-
-            <div class="welcome-card">
-
-                <h2>歡迎使用設備報修系統</h2>
-
-                <p>
-                    請選擇上方功能開始操作
-                </p>
-
-                <ul>
-                    <li>✅ 建立設備報修案件</li>
-                    <li>✅ 自動寫入 Ragic</li>
-                    <li>✅ 支援 LINE WORKS WOFF</li>
-                    <li>✅ 顯示案件編號</li>
-                </ul>
-
-            </div>
-
-        </div>
+        <div id="content"></div>
 
     </div>
 
