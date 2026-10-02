@@ -41,9 +41,11 @@ function showStatus() {
                 id="ticketNumber"
                 placeholder="案件編號">
 
-            <button>
+            <button onclick="queryRepair()">
                 查詢
             </button>
+
+            <div id="queryResult"></div>
 
         </div>
     `;
