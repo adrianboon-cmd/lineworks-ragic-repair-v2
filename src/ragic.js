@@ -56,7 +56,14 @@ async function findRepair(ticketNumber) {
   );
 
   const data = response.data;
-
+  
+console.log(
+  JSON.stringify(
+    response.data,
+    null,
+    2
+  )
+);
   const records =
     Object.values(data);
 
