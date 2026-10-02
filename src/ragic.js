@@ -4,8 +4,7 @@ const config = require("./config");
 async function createRepair(data) {
 
   const url =
-    `${config.ragic.baseUrl}` +
-    `?api&version=2025-01-01`;
+    `${config.ragic.baseUrl}?api&version=2025-01-01`;
 
   const payload = {};
 
@@ -41,11 +40,6 @@ async function createRepair(data) {
   return response.data;
 }
 
-module.exports = {
-  createRepair
-  findRepair
-};
-
 async function findRepair(ticketNumber) {
 
   const url =
@@ -69,10 +63,15 @@ async function findRepair(ticketNumber) {
   const record =
     records.find(
       r =>
-      r[
-        config.ragic.fields.ticketNumber
-      ] === ticketNumber
+        r[
+          config.ragic.fields.ticketNumber
+        ] === ticketNumber
     );
 
   return record;
 }
+
+module.exports = {
+  createRepair,
+  findRepair
+};
