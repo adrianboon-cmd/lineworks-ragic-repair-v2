@@ -81,6 +81,58 @@ document.getElementById("content").innerHTML = `
 
 async function submitRepair(){
 
-alert("下一步接Ragic");
+async function submitRepair(){
+
+  const reporter =
+    document.getElementById("reporter").value;
+
+  const equipment =
+    document.getElementById("equipment").value;
+
+  const description =
+    document.getElementById("description").value;
+
+  const priority =
+    document.getElementById("priority").value;
+
+  try {
+
+    const response = await fetch(
+      "/api/repairs",
+      {
+        method:"POST",
+
+        headers:{
+          "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+
+          reporter,
+          equipment,
+          description,
+          priority
+
+        })
+      }
+    );
+
+    const result =
+      await response.json();
+
+    alert("案件建立成功");
+
+    console.log(result);
+
+  }
+  catch(error){
+
+    alert("建立失敗");
+
+    console.error(error);
+
+  }
+
+}
 
 }
