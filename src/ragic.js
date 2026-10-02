@@ -43,4 +43,36 @@ async function createRepair(data) {
 
 module.exports = {
   createRepair
+  findRepair
 };
+
+async function findRepair(ticketNumber) {
+
+  const url =
+    `${config.ragic.baseUrl}?api&version=2025-01-01`;
+
+  const response = await axios.get(
+    url,
+    {
+      auth: {
+        username: config.ragic.apiKey,
+        password: ""
+      }
+    }
+  );
+
+  const data = response.data;
+
+  const records =
+    Object.values(data);
+
+  const record =
+    records.find(
+      r =>
+      r[
+        config.ragic.fields.ticketNumber
+      ] === ticketNumber
+    );
+
+  return record;
+}
