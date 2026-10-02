@@ -1,3 +1,4 @@
+const ragic = require("./src/ragic");
 const express = require("express");
 const path = require("path");
 
@@ -26,6 +27,30 @@ app.get("/app", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.post("/api/repairs", async (req, res) => {
+
+  try {
+
+    const result =
+      await ragic.createRepair(req.body);
+
+    res.json({
+      success: true,
+      result
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+
+});
 
 app.listen(PORT , () => {
   console.log(`Server running on ${PORT}`);
