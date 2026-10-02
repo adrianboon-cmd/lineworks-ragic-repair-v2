@@ -7,8 +7,7 @@
 
     <title>設備報修系統</title>
 
-    <link rel="stylesheet" href="/style.css">
-</head>
+    <link rel="stylesheetpt src="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.js"d>
 
 <body>
 
@@ -38,8 +37,29 @@
 
     </div>
 
-    <script src="/app.js"></script>
+    /app.jsscript>
+
+    <script>
+        window.onload = async () => {
+
+            try {
+
+                await woff.init({
+                    woffId: "3Wjwqq3UyBqY3x0VGQWr2Q"
+                });
+
+                console.log("WOFF Ready");
+
+            } catch (error) {
+
+                console.error("WOFF Error:", error);
+
+            }
+
+        };
+    </script>
 
 </body>
 
 </html>
+``
