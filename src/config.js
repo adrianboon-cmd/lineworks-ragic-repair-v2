@@ -28,7 +28,7 @@ module.exports = {
       "https://ap3.ragic.com/fujifilmDemo/line-works/1",
 
     fields: {
-      ticketNumber: process.env.RAGIC_FIELD_TICKET_NUMBER || "",
+      ticketNumber: process.env.RAGIC_FIELD_TICKET_NUMBER || "1054238",
       status: process.env.RAGIC_FIELD_STATUS || "1054237",
       reporter: process.env.RAGIC_FIELD_REPORTER || "1054240",
       equipment: process.env.RAGIC_FIELD_EQUIPMENT || "1054241",
