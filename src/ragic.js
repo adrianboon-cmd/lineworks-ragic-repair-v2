@@ -41,7 +41,8 @@ async function createRepair(data) {
 }
 
 async function findRepair(ticketNumber) {
-
+console.log("API KEY EXISTS:", !!config.ragic.apiKey);
+  
   const url =
     `${config.ragic.baseUrl}?api&version=2025-01-01`;
 
