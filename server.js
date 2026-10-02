@@ -51,6 +51,44 @@ app.post("/api/repairs", async (req, res) => {
   }
 
 });
+app.get(
+  "/api/repairs/:ticketNumber",
+  async (req, res) => {
+
+    try {
+
+      const record =
+        await ragic.findRepair(
+          req.params.ticketNumber
+        );
+
+      if (!record) {
+
+        return res.status(404).json({
+          success:false,
+          message:"找不到案件"
+        });
+
+      }
+
+      res.json({
+        success:true,
+        record
+      });
+
+    } catch(error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success:false,
+        message:error.message
+      });
+
+    }
+
+  }
+);
 
 app.listen(PORT , () => {
   console.log(`Server running on ${PORT}`);
