@@ -32,47 +32,14 @@ function showRepair() {
 
 async function submitRepair() {
 
-    const reporter =
-        document.getElementById("reporter").value;
+    alert("Step 1");
 
-    const equipment =
-        document.getElementById("equipment").value;
+    const response = await fetch("/health");
 
-    const description =
-        document.getElementById("description").value;
+    alert("Step 2");
 
-    const priority =
-        document.getElementById("priority").value;
+    const result = await response.json();
 
-    try {
+    alert(JSON.stringify(result));
 
-        const response = await fetch(
-            "/api/repairs",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    reporter,
-                    equipment,
-                    description,
-                    priority
-                })
-            }
-        );
-
-        const result =
-            await response.json();
-
-        alert("案件建立成功");
-
-        console.log(result);
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert("建立失敗");
-    }
 }
