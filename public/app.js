@@ -76,4 +76,3 @@ async function submitRepair() {
         alert("建立失敗");
     }
 }
-}
