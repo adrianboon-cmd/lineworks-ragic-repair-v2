@@ -1,12 +1,11 @@
-const ragic = require("./src/ragic");
 const express = require("express");
 const path = require("path");
+const ragic = require("./src/ragic");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(express.static("public"));
 
 app.get("/health", (req, res) => {
@@ -17,79 +16,60 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("LINE WORKS Ragic Repair V2 Running");
+  res.send(
+    "LINE WORKS Ragic Repair V2 Running"
+  );
 });
 
 app.get("/app", (req, res) => {
   res.sendFile(
-    path.join(__dirname , "public" , "index.html")
+    path.join(
+      __dirname,
+      "public",
+      "index.html"
+    )
   );
 });
 
-const PORT = process.env.PORT || 3000;
 app.post("/api/repairs", async (req, res) => {
+  console.log(
+    "收到 POST /api/repairs:",
+    JSON.stringify(req.body)
+  );
 
   try {
-
     const result =
       await ragic.createRepair(req.body);
 
-    res.json({
+    console.log("報修案件建立完成");
+
+    res.status(201).json({
       success: true,
+      message: "案件建立成功",
       result
     });
-
   } catch (error) {
+    console.error(
+      "建立案件失敗:",
+      error.response?.data || error.message
+    );
 
-    console.error(error);
-
-    res.status(500).json({
+    res.status(
+      error.response?.status || 500
+    ).json({
       success: false,
-      message: error.message
+      message:
+        error.response?.data?.msg ||
+        error.message ||
+        "建立案件失敗"
     });
-
   }
-
 });
-app.get(
-  "/api/repairs/:ticketNumber",
-  async (req, res) => {
 
-    try {
+const PORT = process.env.PORT || 3000;
 
-      const record =
-        await ragic.findRepair(
-          req.params.ticketNumber
-        );
-
-      if (!record) {
-
-        return res.status(404).json({
-          success:false,
-          message:"找不到案件"
-        });
-
-      }
-
-      res.json({
-        success:true,
-        record
-      });
-
-    } catch(error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        success:false,
-        message:error.message
-      });
-
-    }
-
-  }
-);
-
-app.listen(PORT , () => {
-  console.log(`Server running on ${PORT}`);
+app.listen(PORT, () => {
+  console.log(
+    `Server running on ${PORT}`
+  );
 });
