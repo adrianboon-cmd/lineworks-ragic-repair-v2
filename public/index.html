@@ -7,32 +7,55 @@
 
     <title>設備報修系統</title>
 
-    <link rel="stylesheetpt src="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.js"d>
+    <link rel="stylesheet" href="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.jsd>
 
 <body>
 
     <div class="container">
 
-        <h1>設備報修系統</h1>
+        <div class="header">
+            <h1>🔧 設備報修系統</h1>
+            <p>LINE WORKS × Ragic 維修管理平台</p>
+        </div>
 
         <div class="menu">
 
-            <button onclick="showRepair()">
-                我要報修
+            <button class="menu-btn repair"
+                onclick="showRepair()">
+                📝 我要報修
             </button>
 
-            <button onclick="showStatus()">
-                進度查詢
+            <button class="menu-btn status"
+                onclick="showStatus()">
+                📋 進度查詢
             </button>
 
-            <button onclick="showDispatch()">
-                維修派工
+            <button class="menu-btn dispatch"
+                onclick="showDispatch()">
+                👨‍🔧 維修派工
             </button>
 
         </div>
 
         <div id="content">
-            <p>請選擇功能</p>
+
+            <div class="welcome-card">
+
+                <h2>歡迎使用設備報修系統</h2>
+
+                <p>
+                    請選擇上方功能開始操作
+                </p>
+
+                <ul>
+                    <li>✅ 建立設備報修案件</li>
+                    <li>✅ 自動寫入 Ragic</li>
+                    <li>✅ 支援 LINE WORKS WOFF</li>
+                    <li>✅ 顯示案件編號</li>
+                </ul>
+
+            </div>
+
         </div>
 
     </div>
@@ -52,7 +75,7 @@
 
             } catch (error) {
 
-                console.error("WOFF Error:", error);
+                console.log("Browser Mode");
 
             }
 
@@ -62,4 +85,3 @@
 </body>
 
 </html>
-``
