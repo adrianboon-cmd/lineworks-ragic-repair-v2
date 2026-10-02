@@ -26,16 +26,9 @@ async function createRepair(data) {
   payload[config.ragic.fields.updatedAt] =
     new Date().toISOString();
 
-  const response = await axios.post(
-    url,
-    payload,
-    {
-      auth: {
-        username: config.ragic.apiKey,
-        password: ""
-      }
-    }
-  );
+const response = await axios.get(
+  `${url}&APIKey=${config.ragic.apiKey}`
+);
 
   return response.data;
 }
