@@ -28,23 +28,21 @@ app.post("/api/repairs", async (req, res) => {
         
         // 呼叫 ragicService 將資料寫入 Ragic
         const result = await ragicService.createRepairRecord(req.body);
-        console.log("Ragic 回傳結果:", result);
-
-        // 嘗試從 Ragic 回傳的結果中抓取案件編號（相容不同的回傳結構）
+        
+        // 從 Ragic 回傳結果中取出案件編號
         const repairNo = result.rowId || result.no || result.id || "已成功建立";
         
         res.status(200).json({ 
             success: true, 
-            data: { 
-                repairNo: repairNo 
-            },
-            raw: result 
+            repairNo: repairNo,
+            data: result 
         });
     } catch (error) {
         console.error("寫入 Ragic 發生錯誤:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
 // 自動設定 LINE WORKS 常駐選單的路由 (透過 JWT 授權)
 app.get("/api/setup-menu", async (req, res) => {
     try {
