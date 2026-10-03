@@ -15,8 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const formData = new FormData(repairForm);
 
     try {
-      // 修正 API 路由位址為 /create-repair
-      const response = await fetch("/create-repair", {
+      // 修正為 server.js 定義的 /api/repairs 路由
+      const response = await fetch("/api/repairs", {
         method: "POST",
         body: formData
       });
