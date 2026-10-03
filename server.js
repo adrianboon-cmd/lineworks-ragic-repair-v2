@@ -1,6 +1,5 @@
 const express = require("express");
 const path = require("path");
-const axios = require("axios"); // 確保 package.json 有 axios，或使用 fetch
 const ragicService = require("./src/ragic");
 
 const app = express();
@@ -27,17 +26,18 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 快速設定 Persistent Menu 的 API
+// 💡 自動設定 Persistent Menu (常駐選單) API
 app.get("/setup-menu", async (req, res) => {
-  const botId = process.env.LW_BOT_ID;
-  const accessToken = process.env.LW_ACCESS_TOKEN; // 如果您有直接放 Access Token
+  const botId = process.env.LW_BOT_ID || "13282881";
+  const accessToken = process.env.LW_ACCESS_TOKEN;
 
-  if (!botId) {
-    return res.status(400).json({ error: "缺少 LW_BOT_ID 環境變數" });
+  if (!accessToken) {
+    return res.status(400).json({ 
+      error: "請先在 Render 環境變數 (Environment) 設定 LW_ACCESS_TOKEN" 
+    });
   }
 
   try {
-    // 呼叫 LINE WORKS Persistent Menu API
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "POST",
       headers: {
@@ -58,6 +58,7 @@ app.get("/setup-menu", async (req, res) => {
     });
 
     const data = await response.json();
+
     if (response.ok) {
       res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
     } else {
