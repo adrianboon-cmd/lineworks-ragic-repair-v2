@@ -1,36 +1,112 @@
 const express = require("express");
 const path = require("path");
-const jwt = require("jsonwebtoken");
-const ragicService = require("./src/ragic");
+const fetch = require("node-fetch");
+const jwt = require("jsonwebtoken"); // 確保 package.json 有安裝 jsonwebtoken
+const ragicService = require("./src/ragic.js");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// 接收 LINE WORKS Bot 訊息的 Webhook
-app.post("/webhook", async (req, res) => {
-    try {
-        console.log("收到 Webhook 請求:", JSON.stringify(req.body, null, 2));
-        res.status(200).send("OK");
-    } catch (error) {
-        console.error("處理 Webhook 發生錯誤:", error);
-        res.status(500).send("Error");
-    }
-});
+// 產生 LINE WORKS API v2 JWT (用於發送 Bot 推播訊息)
+function generateJwt() {
+    const clientId = process.env.LINE_WORKS_CLIENT_ID;
+    const clientSecret = process.env.LINE_WORKS_CLIENT_SECRET;
+    const serviceAccount = process.env.LINE_WORKS_SERVICE_ACCOUNT;
+    const privateKey = process.env.LINE_WORKS_PRIVATE_KEY; // 需將憑證內容存入環境變數
 
-// 接收前端報修表單並寫入 Ragic
+    if (!clientId || !privateKey || !serviceAccount) {
+        return null;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+        iss: clientId,
+        sub: serviceAccount,
+        iat: now,
+        exp: now + 3600
+    };
+
+    return jwt.sign(payload, privateKey.replace(/\\n/g, '\n'), { algorithm: 'RS256' });
+}
+
+// 取得 LINE WORKS Access Token
+async function getAccessToken() {
+    const assertion = generateJwt();
+    if (!assertion) return null;
+
+    const response = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion: assertion,
+            client_id: process.env.LINE_WORKS_CLIENT_ID,
+            client_secret: process.env.LINE_WORKS_CLIENT_SECRET,
+            scope: "bot"
+        })
+    });
+
+    const data = await response.json();
+    return data.access_token;
+}
+
+// 發送 Bot 訊息到聊天室
+async function sendBotMessage(userId, messageText) {
+    if (!userId) {
+        console.log("缺少 userId，無法發送 Bot 推播訊息");
+        return;
+    }
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+        console.log("無法取得 LINE WORKS Access Token，請檢查憑證設定");
+        return;
+    }
+
+    const botNo = process.env.LINE_WORKS_BOT_NO; // 你的 Bot No (例如 13282881)
+
+    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botNo}/users/${userId}/messages`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            content: {
+                type: "text",
+                text: messageText
+            }
+        })
+    });
+
+    const result = await response.json();
+    console.log("LINE WORKS Bot 推播結果:", result);
+}
+
+// 接收前端報修表單 API
 app.post("/api/repairs", async (req, res) => {
     try {
         console.log("收到前端報修表單:", req.body);
         
+        // 1. 寫入 Ragic
         const result = await ragicService.createRepairRecord(req.body);
-        
-        // 優先抓取 Ragic 回傳的 ragicId 作為案件編號
         const repairNo = result.ragicId || result.rowId || result.id || "已成功建立";
         
+        // 2. 組裝回傳給 Bot 聊天室的訊息內容
+        const messageText = `【設備報修單已建立】\n` +
+                            `📌 案件編號：${repairNo}\n` +
+                            `👤 填報人：${req.body.reporter}\n` +
+                            `💻 設備名稱：${req.body.equipmentName}\n` +
+                            `🚨 緊急程度：${req.body.urgency}\n` +
+                            `📝 故障描述：${req.body.description}\n` +
+                            `⏱️ 填報時間：${req.body.repairTime}`;
+
+        // 3. 自動推播訊息回 LINE WORKS 聊天室 (需要前端有傳入 userId)
+        await sendBotMessage(req.body.userId, messageText);
+
         res.status(200).json({ 
             success: true, 
             repairNo: repairNo,
@@ -38,79 +114,6 @@ app.post("/api/repairs", async (req, res) => {
         });
     } catch (error) {
         console.error("後端處理錯誤:", error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 自動設定 LINE WORKS 常駐選單的路由 (透過 JWT 授權)
-app.get("/api/setup-menu", async (req, res) => {
-    try {
-        const botId = process.env.BOT_ID || "13282881";
-        const clientId = process.env.LW_CLIENT_ID || "12waaFaUV8BVsKxiPysY";
-        const serviceAccount = process.env.LW_SERVICE_ACCOUNT || "pzoi8.serviceaccount@fbtw2";
-        const privateKey = process.env.LW_PRIVATE_KEY; 
-
-        if (!privateKey) {
-            throw new Error("缺少 LW_PRIVATE_KEY 環境變數");
-        }
-
-        // 1. 產生 JWT 簽章
-        const now = Math.floor(Date.now() / 1000);
-        const payload = {
-            iss: clientId,
-            sub: serviceAccount,
-            iat: now,
-            exp: now + 3600
-        };
-
-        const assertion = jwt.sign(payload, privateKey.replace(/\\n/g, '\n'), { algorithm: 'RS256' });
-
-        // 2. 向 LINE WORKS 換取 Access Token
-        const tokenParams = new URLSearchParams();
-        tokenParams.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-        tokenParams.append("assertion", assertion);
-
-        const tokenResponse = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: tokenParams.toString()
-        });
-
-        const tokenData = await tokenResponse.json();
-        if (!tokenResponse.ok) {
-            throw new Error(`JWT Token 取得失敗: ${JSON.stringify(tokenData)}`);
-        }
-
-        const accessToken = tokenData.access_token;
-
-        // 3. 設定 WOFF 常駐選單
-        const menuResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                content: {
-                    actions: [
-                        {
-                            type: "uri",
-                            label: "線上報修",
-                            uri: "https://lineworks-ragic-repair-v2.onrender.com"
-                        }
-                    ]
-                }
-            })
-        });
-
-        const resText = await menuResponse.text();
-        if (!menuResponse.ok) {
-            throw new Error(`設定選單失敗: ${resText}`);
-        }
-
-        res.json({ success: true, message: "常駐選單設定成功！" });
-    } catch (error) {
-        console.error("❌ 設定常駐選單錯誤:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
