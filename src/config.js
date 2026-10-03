@@ -1,27 +1,13 @@
-const requiredVariables = [
-  "RAGIC_API_KEY",
-  "RAGIC_BASE_URL",
-  "WOFF_ID"
-];
-
-function validateEnvironment() {
-  const missing = requiredVariables.filter(
-    (name) => !process.env[name]
-  );
-
-  if (missing.length > 0) {
-    console.warn(
-      "Missing environment variables: " + missing.join(", ")
-    );
-  }
-}
-
-validateEnvironment();
-
 module.exports = {
   port: process.env.PORT || 3000,
 
-// ...前面的程式碼保持不變 (1~22行)
+  lineworks: {
+    clientId: process.env.LW_CLIENT_ID,
+    clientSecret: process.env.LW_CLIENT_SECRET,
+    serviceAccount: process.env.LW_SERVICE_ACCOUNT,
+    privateKey: process.env.LW_PRIVATE_KEY,
+    botId: process.env.LW_BOT_ID
+  },
 
   ragic: {
     apiKey: process.env.RAGIC_API_KEY,
@@ -45,21 +31,5 @@ module.exports = {
         process.env.RAGIC_FIELD_LINEWORKS_USER_ID || "1054335",
       priority: process.env.RAGIC_FIELD_PRIORITY || "1054336"
     }
-  }
-};
-
-  lineworks: {
-    clientId: process.env.LW_CLIENT_ID,
-    clientSecret: process.env.LW_CLIENT_SECRET,
-    serviceAccount: process.env.LW_SERVICE_ACCOUNT,
-    privateKey: process.env.LW_PRIVATE_KEY,
-    botId: process.env.LW_BOT_ID,
-    woffId:
-      process.env.WOFF_ID ||
-      "3Wjwqq3UyBqY3x0VGQWr2Q",
-    adminUserIds: (process.env.ADMIN_USER_IDS || "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean)
   }
 };
