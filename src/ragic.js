@@ -21,22 +21,43 @@ async function createRepairWithPhoto(req) {
         return reject(new Error("填報人、設備名稱、故障描述與緊急程度皆為必填！"));
       }
 
-      // 取得 Ragic 後台的原始純 API Key (無須 Base64)
-      let rawApiKey = process.env.RAGIC_API_KEY || "你的原始Ragic_API_Key";
-      let apiKey = rawApiKey.trim();
+      // 1. 取得 Ragic 原始 API Key 並去除前後空白
+      let rawApiKey =
+        process.env.RAGIC_API_KEY ||dzUyaTY5S3ZGWWZOd1lFaklIVnRnOWIraUowS2tGK1U4TlFRUkR1RXZ0MHJMaUczbkg4cnNTRzV5TjR4bWhnN29xRk44Vzk4Q2ZNPQ
+        (config.ragic && config.ragic.apiKey) ||
+        config.RAGIC_API_KEY ||
+        "";
 
-      let targetUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1";
+      rawApiKey = rawApiKey.trim();
+
+      if (!rawApiKey) {
+        return reject(new Error("伺服器未設定有效的 RAGIC_API_KEY"));
+      }
+
+      // 2. 將 API Key 進行標準 Basic Auth Base64 編碼 (格式為 API_KEY:)
+      const authHeader = `Basic ${Buffer.from(rawApiKey + ":").toString("base64")}`;
+
+      // 3. 取得 Ragic 表單 URL
+      let targetUrl =
+        process.env.RAGIC_FORM_URL ||
+        process.env.RAGIC_BASE_URL ||
+        (config.ragic && config.ragic.baseUrl) ||
+        "https://ap3.ragic.com/fujifilmDemo/line-works/1";
+
+      if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+        targetUrl = `https://${targetUrl}`;
+      }
 
       const ragicFormData = new FormData();
 
-      // 帶入 Ragic 欄位資料
+      // 4. 帶入 Ragic 欄位資料
       ragicFormData.append("1054240", reporter);        // 填報人
       ragicFormData.append("1054241", equipment);       // 設備名稱
       ragicFormData.append("1054242", description);     // 故障描述
       ragicFormData.append("1054336", priority);        // 緊急程度
       ragicFormData.append("1054237", "待處理");       // 案件狀態
 
-      // 帶入照片 (欄位 ID: 1054243)
+      // 5. 帶入照片 (欄位 ID: 1054243)
       if (photoFile && photoFile.size > 0) {
         try {
           const fileStream = fs.createReadStream(photoFile.filepath);
@@ -44,19 +65,20 @@ async function createRepairWithPhoto(req) {
             filename: photoFile.originalFilename,
             contentType: photoFile.mimetype
           });
+          console.log(`準備上傳照片：${photoFile.originalFilename}`);
         } catch (fileErr) {
           console.error("照片處理失敗:", fileErr);
         }
       }
 
       try {
-        // 直接將 API Key 帶在 URL 參數中 (Ragic 官方支援的直接授權法)
-        const requestUrl = `${targetUrl}?api&api_key=${encodeURIComponent(apiKey)}`;
         console.log(`正在發送請求至 Ragic: ${targetUrl}?api`);
 
-        const response = await fetch(requestUrl, {
+        // 6. 發送包含 Authorization Header 的 POST 請求
+        const response = await fetch(`${targetUrl}?api`, {
           method: "POST",
           headers: {
+            Authorization: authHeader,
             ...ragicFormData.getHeaders()
           },
           body: ragicFormData
