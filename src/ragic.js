@@ -1,25 +1,5 @@
 const config = require("./config");
 
-// 遞迴搜尋物件內所有字串，尋找符合案件編號格式 (例如 1003-001 或 1003-028)
-function findCaseNumberInObject(obj) {
-  if (!obj || typeof obj !== "object") return null;
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === "string" || typeof value === "number") {
-      const valStr = String(value).trim();
-      // 匹配類似 1003-001 這種 Ragic 自動編號格式
-      if (/^\d{3,4}-\d{3,}$/.test(valStr)) {
-        console.log(`🎯 成功從欄位 [${key}] 匹配到案件編號: ${valStr}`);
-        return valStr;
-      }
-    } else if (typeof value === "object" && value !== null) {
-      const nestedResult = findCaseNumberInObject(value);
-      if (nestedResult) return nestedResult;
-    }
-  }
-  return null;
-}
-
 const ragicService = {
   createRepair: async (req) => {
     try {
@@ -73,42 +53,9 @@ const ragicService = {
       }
 
       const ragicId = resData.ragicId;
-      let caseNumber = `RAGIC-#${ragicId}`;
-
-      if (ragicId) {
-        try {
-          const baseUrl = formUrl.split("?")[0];
-          // 直接將 api Key 帶在 URL 參數中，避免 Auth Header 無效
-          const detailUrl = `${baseUrl}/${ragicId}?api=${apiKey}`;
-          console.log(`正在查詢 Ragic 完整資料: ${detailUrl.replace(apiKey, "*****")}`);
-
-          const detailRes = await fetch(detailUrl, {
-            method: "GET"
-          });
-
-          if (detailRes.ok) {
-            const detailText = await detailRes.text();
-            console.log("=== Ragic 詳細紀錄原始 JSON ===");
-            console.log(detailText);
-            console.log("================================");
-
-            const detailData = JSON.parse(detailText);
-
-            // 執行遞迴搜尋案件編號
-            const foundNumber = findCaseNumberInObject(detailData);
-            if (foundNumber) {
-              caseNumber = foundNumber;
-            } else {
-              console.warn("⚠️ 未能在 JSON 中匹配到 MMDD-XXX 格式的案件編號");
-            }
-          } else {
-            const errText = await detailRes.text();
-            console.error("❌ 查詢詳細資料失敗:", errText);
-          }
-        } catch (fetchErr) {
-          console.warn("⚠️ 取得自動編號詳細資料失敗:", fetchErr.message);
-        }
-      }
+      
+      // 直接對齊 Ragic 的 ragicId，格式如：RAGIC-#30
+      const caseNumber = `RAGIC-#${ragicId}`;
 
       return {
         success: true,
