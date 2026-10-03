@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// 設定 multer 將上傳的圖片暫存在記憶體中，方便後續轉傳給 Ragic
+// 設定 multer 將上傳的圖片暫存在記憶體中
 const upload = multer({ storage: multer.memoryStorage() });
 
 // 取得 LINE WORKS 存取 Token
@@ -76,24 +76,19 @@ async function sendBotMessage(userId, text) {
   }
 }
 
-// 接收前端報修表單 API（結合圖片上傳與 Ragic 寫入）
+// 接收前端報修表單 API（真實寫入 Ragic 並支援圖片）
 app.post("/api/repairs", upload.single('image'), async (req, res) => {
   try {
     console.log("收到前端報修表單資料:", req.body);
     console.log("收到上傳的圖片檔案:", req.file ? req.file.originalname : "無圖片上傳");
 
     const formData = req.body;
-    const imageFile = req.file; // 這裡可以拿到圖片檔案
+    const imageFile = req.file;
 
-    // 呼叫 Ragic API 將資料（含圖片）寫入您的表單
-    // 這邊使用標準 Ragic API 格式進行寫入
-    const ragicApiKey = process.env.RAGIC_API_KEY; // 請確保您的環境變數有這項，或直接填入您的 API Key
-    const ragicApiUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1"; // 根據您的 Ragic 網址調整
-
-    // 將資料整理好送到 Ragic
-    const ragicPayload = {
+    // 準備傳送給 Ragic 的資料
+    const ragicData = {
       ...formData,
-      // 如果有圖片，透過 multer 轉成 base64 或直接傳遞給 Ragic
+      // 如果有上傳圖片，轉換為 Ragic 可接收的格式
       ...(imageFile && {
         image: {
           value: imageFile.buffer.toString('base64'),
@@ -102,20 +97,34 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
       })
     };
 
-    // 如果您原本有自己的 ragicService，也可以直接在這裡執行
-    console.log("準備寫入 Ragic 的內容:", ragicPayload);
+    // 呼叫真實的 Ragic API 寫入資料
+    const ragicApiKey = process.env.RAGIC_API_KEY; 
+    const ragicResponse = await axios.post(
+      "https://ap3.ragic.com/fujifilmDemo/line-works/1?api&v=3", 
+      ragicData,
+      {
+        headers: {
+          ...(ragicApiKey && { 'Authorization': `Basic ${Buffer.from(ragicApiKey + ':').toString('base64')}` }),
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-    // 模擬成功寫入並回傳結果
-    const repairNo = "REP-" + Date.now();
+    console.log("Ragic 回應結果:", ragicResponse.data);
+
+    // 取得 Ragic 實際產生的案件編號（如果有的話）
+    const repairNo = ragicResponse.data.rowId || ragicResponse.data.id || "已成功建立";
 
     // 發送通知給 LINE WORKS 用戶
     if (formData.userId) {
       const messageText = 
         `【設備報修單已建立】\n` +
         `📌 案件編號：${repairNo}\n` +
+        `👤 填報人：${formData.reporter || '未填寫'}\n` +
         `🏢 設備名稱：${formData.equipmentName || '未填寫'}\n` +
+        `🚨 緊急程度：${formData.urgency || '未填寫'}\n` +
         `📝 故障描述：${formData.description || '未填寫'}\n` +
-        `🕒 狀態：已成功送出並記錄！`;
+        `🕒 填報時間：${formData.repairTime || '未填寫'}`;
       
       await sendBotMessage(formData.userId, messageText);
     }
@@ -123,12 +132,12 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     res.status(200).json({
       success: true,
       repairNo: repairNo,
-      message: '報修成功送出並已記錄！'
+      message: '報修成功送出並已寫入 Ragic！'
     });
 
   } catch (error) {
-    console.error("報修處理失敗:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("報修處理失敗:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: error.response?.data || error.message });
   }
 });
 
