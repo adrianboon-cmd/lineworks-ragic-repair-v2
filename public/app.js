@@ -34,12 +34,22 @@ document.addEventListener("DOMContentLoaded", () => {
             submitBtn.textContent = "正在送出報修單...";
         }
 
-        // 嚴格對應 index.html 裡的欄位 ID
+        // 取得當前格式化時間 (YYYY-MM-DD HH:mm:ss)
+        const now = new Date();
+        const formattedTime = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0') + ' ' +
+            String(now.getHours()).padStart(2, '0') + ':' +
+            String(now.getMinutes()).padStart(2, '0') + ':' +
+            String(now.getSeconds()).padStart(2, '0');
+
+        // 收集表單各欄位資料（嚴格對應 index.html 裡的 ID）
         const formData = {
             reporter: document.getElementById("reporter")?.value || "",
-            equipmentName: document.getElementById("equipment")?.value || "", // 對應 index.html 的 id="equipment"
-            urgency: document.getElementById("priority")?.value || "一般",     // 對應 index.html 的 id="priority"
+            equipmentName: document.getElementById("equipment")?.value || "",
+            urgency: document.getElementById("priority")?.value || "一般",
             description: document.getElementById("description")?.value || "",
+            repairTime: formattedTime, // 自動帶入填報時間
             userId: currentUserId
         };
 
@@ -57,7 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await response.json();
 
             if (response.ok && result.success) {
-                const repairNo = result.repairNo || "已成功建立";
+                // 正確抓取 Ragic 回傳的案件編號（例如 rowId 或 id）
+                const repairNo = result.repairNo || result.data?.rowId || result.data?.id || "已成功建立";
                 alert(`報修單已成功送出！\n您的案件編號為: ${repairNo}`);
                 repairForm.reset();
             } else {
