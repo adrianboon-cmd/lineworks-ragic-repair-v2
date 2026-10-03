@@ -16,7 +16,7 @@ function base64url(source) {
     return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-// 取得 LINE WORKS Access Token (已移除無效的 scope)
+// 取得 LINE WORKS Access Token (標準 Service Account JWT 流程)
 async function getAccessToken() {
     const clientId = process.env.LW_CLIENT_ID;
     const clientSecret = process.env.LW_CLIENT_SECRET;
@@ -55,6 +55,7 @@ async function getAccessToken() {
     params.append("client_id", clientId);
     params.append("client_secret", clientSecret || "");
     params.append("assertion", jwt);
+    // 注意：這裡絕對不帶 scope，權限完全由 Console 繫結決定
 
     const response = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
         method: "POST",
