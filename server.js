@@ -82,7 +82,7 @@ app.post("/api/repairs", async (req, res) => {
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
-    // 3. 若前端有傳遞動態 userId，發送個人化報修紀錄訊息給該使用者
+    // 3. 若有取得動態 userId，發送個人化報修紀錄訊息給該使用者
     if (userId) {
       const accessToken = await getAccessToken(); // 自動簽署取得 Token
 
@@ -135,7 +135,7 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 一鍵自動發行 Token + 設定 Persistent Menu API
+// 💡 一鍵自動發行 Token + 設定 Persistent Menu API (帶入 user_id 關鍵修復)
 app.get("/setup-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
 
@@ -143,7 +143,7 @@ app.get("/setup-menu", async (req, res) => {
     // 1. 自動簽署 JWT 取得最新 Access Token
     const accessToken = await getAccessToken();
 
-    // 2. 呼叫 LINE WORKS 設定常駐選單
+    // 2. 呼叫 LINE WORKS 設定常駐選單，網址帶入 {user_id} 變數
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "POST",
       headers: {
@@ -156,7 +156,7 @@ app.get("/setup-menu", async (req, res) => {
             {
               type: "uri",
               label: "🔧 我要報修",
-              uri: "https://lineworks-ragic-repair-v2.onrender.com"
+              uri: "https://lineworks-ragic-repair-v2.onrender.com?userId={user_id}"
             }
           ]
         }
@@ -166,7 +166,7 @@ app.get("/setup-menu", async (req, res) => {
     const data = await response.json();
 
     if (response.ok) {
-      res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
+      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>請重新開啟 LINE WORKS App 進行測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
     }
