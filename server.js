@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
+const axios = require("axios");
 const ragicService = require("./src/ragic");
 
 const app = express();
@@ -12,106 +13,101 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Base64URL 編碼
 function base64url(source) {
-  let encoded = Buffer.from(source).toString("base64");
-  return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    let encoded = Buffer.from(source).toString("base64");
+    return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-// 💡 JWT 簽署換取 LINE WORKS Access Token
+// 取得 LINE WORKS Access Token
 async function getAccessToken() {
-  const clientId = process.env.LW_CLIENT_ID;
-  const serviceAccount = process.env.LW_SERVICE_ACCOUNT;
-  let privateKey = process.env.LW_PRIVATE_KEY;
+    const clientId = process.env.LW_CLIENT_ID;
+    const clientSecret = process.env.LW_CLIENT_SECRET;
+    const serviceAccount = process.env.LW_SERVICE_ACCOUNT;
+    const privateKey = process.env.LW_PRIVATE_KEY;
 
-  if (!clientId || !serviceAccount || !privateKey) {
-    throw new Error("缺少必要的環境變數 (LW_CLIENT_ID, LW_SERVICE_ACCOUNT, LW_PRIVATE_KEY)");
-  }
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const expiration = issuedAt + 3600;
 
-  privateKey = privateKey.replace(/\\n/g, "\n");
+    const header = { alg: "RS256", typ: "JWT" };
+    const payload = {
+        iss: clientId,
+        sub: serviceAccount,
+        iat: issuedAt,
+        exp: expiration
+    };
 
-  const header = { alg: "RS256", typ: "JWT" };
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: clientId,
-    sub: serviceAccount,
-    iat: now,
-    exp: now + 3600
-  };
+    const encodedHeader = base64url(JSON.stringify(header));
+    const encodedPayload = base64url(JSON.stringify(payload));
+    const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
-  const unsignedToken = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
-  const signer = crypto.createSign("RSA-SHA256");
-  signer.update(unsignedToken);
-  const signature = signer.sign(privateKey, "base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const sign = crypto.createSign("RSA-SHA256");
+    sign.update(signatureInput);
+    sign.end();
+    const signature = base64url(sign.sign(privateKey));
 
-  const jwt = `${unsignedToken}.${signature}`;
+    const jwt = `${signatureInput}.${signature}`;
 
-  const params = new URLSearchParams();
-  params.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-  params.append("client_id", clientId);
-  params.append("client_secret", process.env.LW_CLIENT_SECRET || "");
-  params.append("assertion", jwt);
-  params.append("scope", "bot,bot.read");
+    const response = await axios.post(
+        "https://auth.worksmobile.com/oauth2/v2.0/token",
+        new URLSearchParams({
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            client_id: clientId,
+            client_secret: clientSecret,
+            assertion: jwt
+        }),
+        {
+            headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        }
+    );
 
-  const res = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString()
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Token 取得失敗: ${JSON.stringify(data)}`);
-  return data.access_token;
+    return response.data.access_token;
 }
 
-// 💡 處理 API 報修 POST
-app.post("/api/repairs", async (req, res) => {
-  try {
-    console.log("收到報修請求，req.body:", req.body);
-
-    // 1. 呼叫 Ragic API 新增並取得自動單號
-    const result = await ragicService.createRepair(req);
-    const caseNumber = result.caseNumber || "已完成填寫";
-
-    const { name, reporter, device, equipment, description, userId } = req.body;
-    const finalUserId = userId || req.body.user_id;
-    const displayName = reporter || name || "未提供";
-    const displayDevice = equipment || device || "未提供";
-
-    const botId = process.env.LW_BOT_ID || "13282881";
-
-    // 2. 如果有 userId，發送 LINE WORKS Bot 訊息通知
-    if (finalUserId) {
-      console.log(`準備發送 Bot 訊息給用戶: ${finalUserId}，案件單號: ${caseNumber}`);
-      const accessToken = await getAccessToken();
-
-      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          content: {
-            type: "text",
-            text: `✅ 報修單已成功送出！\n\n📌 案件編號：${caseNumber}\n📋 報修紀錄摘要：\n• 報修人：${displayName}\n• 設備名稱：${displayDevice}\n• 問題描述：${description || "無"}`
-          }
-        })
-      });
+// 接收 LINE WORKS Bot 訊息的 Webhook
+app.post("/webhook", async (req, res) => {
+    try {
+        console.log("收到 Webhook 請求:", JSON.stringify(req.body, null, 2));
+        res.status(200).send("OK");
+    } catch (error) {
+        console.error("處理 Webhook 發生錯誤:", error);
     }
-
-    // 3. 回傳 Ragic 自動產生的單號給前端網頁
-    return res.json({
-      success: true,
-      caseNumber: caseNumber,
-      ragicId: result.ragicId
-    });
-
-  } catch (error) {
-    console.error("❌ 報修失敗:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "建立報修單失敗"
-    });
-  }
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// 設定 LINE WORKS Persistent Menu 的暫時路由
+app.get("/api/setup-menu", async (req, res) => {
+    try {
+        const token = await getAccessToken();
+        const botId = process.env.BOT_ID || "13282881";
+
+        const response = await axios.post(
+            `https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`,
+            {
+                content: {
+                    actions: [
+                        {
+                            type: "uri",
+                            label: "線上報修",
+                            uri: "url?id=41"
+                        }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        res.json({ success: true, message: "Persistent menu 設定成功！", data: response.data });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: error.response ? error.response.data : error.message 
+        });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`伺服器正在 Port ${PORT} 上執行`);
+});
