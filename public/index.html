@@ -1,73 +1,55 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
-
+<html lang="zh-TW">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>設備報修系統</title>
-
-    <link rel="stylesheet" href="/style.css">
-
-    <script src="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>設備報修系統</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+  <div class="container">
+    <h1 class="header-title">🔧 設備報修系統</h1>
+    <p class="header-subtitle">LINE WORKS × Ragic 報修平台</p>
 
-    <div class="container">
+    <!-- 直接顯示報修表單區塊 -->
+    <form id="repairForm" enctype="multipart/form-data">
+      <h2>🛠️ LINE WORKS 設備報修</h2>
+      <p class="subtitle">請填寫故障狀況並上傳照片，系統將自動建立 Ragic 報修單。</p>
 
-        <div class="header">
-            <h1>🔧 設備報修系統</h1>
-            <p>LINE WORKS × Ragic 報修平台</p>
-        </div>
+      <div class="form-group">
+        <label for="reporter">👤 填報人 <span class="required">*</span></label>
+        <input type="text" id="reporter" name="reporter" placeholder="請輸入您的姓名" required>
+      </div>
 
-        <div class="welcome-card">
+      <div class="form-group">
+        <label for="equipment">💻 設備名稱 <span class="required">*</span></label>
+        <input type="text" id="equipment" name="equipment" placeholder="例如：pc、大廳影印機" required>
+      </div>
 
-            <h2>歡迎使用</h2>
+      <div class="form-group">
+        <label for="priority">🚨 緊急程度 <span class="required">*</span></label>
+        <select id="priority" name="priority" required>
+          <option value="一般" selected>🟢 一般</option>
+          <option value="緊急">🟡 緊急</option>
+          <option value="非常緊急">🔴 非常緊急</option>
+        </select>
+      </div>
 
-            <p>
-                若設備異常，請點擊下方按鈕建立報修案件。
-            </p>
+      <div class="form-group">
+        <label for="description">📝 故障描述 <span class="required">*</span></label>
+        <textarea id="description" name="description" placeholder="請詳細說明設備問題（例如：無法開機、持續發出異音）" required></textarea>
+      </div>
 
-            <button
-                class="repair-btn"
-                onclick="showRepair()">
-                📝 我要報修
-            </button>
+      <div class="form-group">
+        <label for="photo">📸 故障照片（可選）</label>
+        <input type="file" id="photo" name="photo" accept="image/*">
+        <div class="file-hint">只支援圖片檔案 (jpg, png)</div>
+      </div>
 
-        </div>
+      <button type="submit" id="submitBtn">送出報修案件</button>
+    </form>
+  </div>
 
-<div id="content"></div>
-
-</div>
-
-<script src="/app.js"></
-
-window.onload = async () => {
-
-    try {
-
-        if (typeof woff !== "undefined") {
-
-            await woff.init({
-                woffId: "3Wjwqq3UyBqY3x0VGQWr2Q"
-            });
-
-            console.log("WOFF Ready");
-
-        }
-
-    } catch (error) {
-
-        console.log("Browser Mode");
-
-    }
-
-};
-
-</script>
-
-
+  <script src="script.js"></script>
 </body>
-
 </html>
