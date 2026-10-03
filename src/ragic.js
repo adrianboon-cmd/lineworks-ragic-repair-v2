@@ -4,11 +4,10 @@ const config = require("./config");
 function findCaseNumberInObject(obj) {
   if (!obj || typeof obj !== "object") return null;
 
-  // 1. 先找有沒有 key 直接包含案件編號或數值匹配 MMDD-XXX 格式
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === "string" || typeof value === "number") {
       const valStr = String(value).trim();
-      // 匹配類似 1003-001 或 1003-028 這種 Ragic 自動編號格式
+      // 匹配類似 1003-001 這種 Ragic 自動編號格式
       if (/^\d{3,4}-\d{3,}$/.test(valStr)) {
         console.log(`🎯 成功從欄位 [${key}] 匹配到案件編號: ${valStr}`);
         return valStr;
@@ -79,14 +78,12 @@ const ragicService = {
       if (ragicId) {
         try {
           const baseUrl = formUrl.split("?")[0];
-          const detailUrl = `${baseUrl}/${ragicId}?api`;
-          console.log(`正在查詢 Ragic 完整資料: ${detailUrl}`);
+          // 直接將 api Key 帶在 URL 參數中，避免 Auth Header 無效
+          const detailUrl = `${baseUrl}/${ragicId}?api=${apiKey}`;
+          console.log(`正在查詢 Ragic 完整資料: ${detailUrl.replace(apiKey, "*****")}`);
 
           const detailRes = await fetch(detailUrl, {
-            method: "GET",
-            headers: {
-              "Authorization": `Basic ${Buffer.from(apiKey + ":").toString("base64")}`
-            }
+            method: "GET"
           });
 
           if (detailRes.ok) {
@@ -104,6 +101,9 @@ const ragicService = {
             } else {
               console.warn("⚠️ 未能在 JSON 中匹配到 MMDD-XXX 格式的案件編號");
             }
+          } else {
+            const errText = await detailRes.text();
+            console.error("❌ 查詢詳細資料失敗:", errText);
           }
         } catch (fetchErr) {
           console.warn("⚠️ 取得自動編號詳細資料失敗:", fetchErr.message);
