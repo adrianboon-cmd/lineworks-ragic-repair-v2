@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "LINE WORKS Ragic Repair Bot",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+"scripts": {
+  "start": "node set-menu.js && node server.js"
+}
   "dependencies": {
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
