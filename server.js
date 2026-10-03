@@ -68,7 +68,7 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// 💡 處理 LINE WORKS Webhook (使用者進入聊天室或發送訊息時自動觸發按鈕)
+// 💡 處理 LINE WORKS Webhook
 app.post("/callback", async (req, res) => {
   res.status(200).send("OK");
 
@@ -79,10 +79,9 @@ app.post("/callback", async (req, res) => {
       const botId = process.env.LW_BOT_ID || "13282881";
       const accessToken = await getAccessToken();
 
-      // 自動產生帶有個人身分 ID 的報修網址
-      const repairUrl = `https://lineworks-ragic-repair-v2.onrender.com?userId=${userId}`;
+      // 💡 使用 WOFF Scheme 格式開啟，繞過 LINE WORKS 的外部網域安全攔截
+      const woffUrl = `https://line.worksmobile.com/woff/v1/app/WiPs90_DcB_oVcPYkXSOrg?userId=${userId}`;
 
-      // 無論是剛進入聊天室或傳送訊息，都自動推播報修按鈕
       await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
         method: "POST",
         headers: {
@@ -97,7 +96,7 @@ app.post("/callback", async (req, res) => {
               {
                 type: "uri",
                 label: "🔧 點我填寫報修單",
-                uri: repairUrl
+                uri: woffUrl
               }
             ]
           }
