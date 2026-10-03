@@ -1,26 +1,19 @@
 const express = require("express");
 const path = require("path");
-
-// 1. 正確引入 Ragic 服務模組
+const axios = require("axios"); // 確保 package.json 有 axios，或使用 fetch
 const ragicService = require("./src/ragic");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 解析 JSON 與 URL-encoded 請求內容
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// 設定靜態檔案目錄 (對應 public 資料夾內的 index.html, style.css, app.js)
 app.use(express.static(path.join(__dirname, "public")));
 
-// 2. 處理前端報修案件發送的 POST API 路由
+// POST 報修 API
 app.post("/api/repairs", async (req, res) => {
   try {
-    // 呼叫 ragic.js 處理 Multipart 表單與 Ragic API 寫入
     const result = await ragicService.createRepair(req);
-
-    // 成功時回傳給前端，確保包含 repairId
     res.json({
       success: true,
       repairId: result.repairId || result.id
@@ -34,7 +27,47 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 啟動 Express 伺服器
+// 💡 快速設定 Persistent Menu 的 API
+app.get("/setup-menu", async (req, res) => {
+  const botId = process.env.LW_BOT_ID;
+  const accessToken = process.env.LW_ACCESS_TOKEN; // 如果您有直接放 Access Token
+
+  if (!botId) {
+    return res.status(400).json({ error: "缺少 LW_BOT_ID 環境變數" });
+  }
+
+  try {
+    // 呼叫 LINE WORKS Persistent Menu API
+    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        content: {
+          actions: [
+            {
+              type: "uri",
+              label: "🔧 我要報修",
+              uri: "https://lineworks-ragic-repair-v2.onrender.com"
+            }
+          ]
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
+    } else {
+      res.status(400).json({ error: "設定失敗", details: data });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
