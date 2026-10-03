@@ -20,7 +20,7 @@ app.post("/webhook", async (req, res) => {
     }
 });
 
-// 設定 LINE WORKS Persistent Menu 的路由
+// 自動設定 LINE WORKS Persistent Menu 的路由
 app.get("/api/setup-menu", async (req, res) => {
     try {
         const botId = process.env.BOT_ID || "13282881";
@@ -30,7 +30,7 @@ app.get("/api/setup-menu", async (req, res) => {
             throw new Error("缺少 BOT_SECRET 環境變數");
         }
 
-        // 1. 取得 Bot Token (修正 Header 格式)
+        // 1. 取得 Bot 專屬 Token (修正 header 傳遞方式)
         const tokenResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/token`, {
             method: "POST",
             headers: {
@@ -44,13 +44,12 @@ app.get("/api/setup-menu", async (req, res) => {
             throw new Error(`取得 Bot Token 失敗: ${JSON.stringify(tokenData)}`);
         }
         
-        // 支援多種回傳格式的 Token 欄位
         const accessToken = tokenData.token || tokenData.access_token;
         if (!accessToken) {
             throw new Error(`無法解析 Token: ${JSON.stringify(tokenData)}`);
         }
 
-        // 2. 設定常駐選單
+        // 2. 設定 WOFF 常駐選單
         const menuResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
             method: "POST",
             headers: {
@@ -71,18 +70,11 @@ app.get("/api/setup-menu", async (req, res) => {
         });
 
         const resText = await menuResponse.text();
-        let resData;
-        try {
-            resData = JSON.parse(resText);
-        } catch (e) {
-            resData = { raw: resText };
-        }
-
         if (!menuResponse.ok) {
             throw new Error(`設定選單失敗: ${resText}`);
         }
 
-        res.json({ success: true, message: "Persistent menu 設定成功！", data: resData });
+        res.json({ success: true, message: "Persistent menu 常駐選單設定成功！" });
     } catch (error) {
         console.error("❌ 設定 Persistent menu 錯誤:", error.message);
         res.status(500).json({ success: false, error: error.message });
