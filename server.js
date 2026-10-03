@@ -191,3 +191,42 @@ async function sendBotMessage(userId, channelId, messagePayload) {
         body: JSON.stringify(messagePayload)
     });
 }
+// 自動註冊 LINE WORKS 固定選單的路由
+app.get('/api/setup-menu', async (req, res) => {
+  try {
+    // 1. 取得 Server-to-Server 存取 Token（沿用您現有的 getAccessToken 函式）
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      return res.status(500).json({ error: 'Failed to get access token' });
+    }
+
+    const botId = process.env.LINE_WORKS_BOT_NO;
+    const apiUrl = `https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`;
+
+    // 2. 設定選單內容 (可自訂按鈕名稱與您的 WOFF 網址)
+    const menuData = {
+      content: {
+        actions: [
+          {
+            type: 'uri',
+            label: '🔧 設備報修系統',
+            uri: 'https://lineworks-ragic-repair-v2.onrender.com' // 請換成您的前端 WOFF 網址
+          }
+        ]
+      }
+    };
+
+    // 3. 發送 API 請求註冊固定選單
+    const response = await axios.post(apiUrl, menuData, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    res.json({ success: true, message: 'Persistent menu registered successfully', data: response.data });
+  } catch (error) {
+    console.error('Error setting persistent menu:', error.response?.data || error.message);
+    res.status(500).json({ success: false, error: error.response?.data || error.message });
+  }
+});
