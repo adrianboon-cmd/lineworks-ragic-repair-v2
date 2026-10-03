@@ -36,14 +36,13 @@ async function getAccessToken() {
 async function setPersistentMenu() {
     const accessToken = await getAccessToken();
     if (!accessToken) {
-        console.error("❌ 無法取得 Access Token，請檢查環境變數。");
+        console.error("❌ 無法取得 Access Token，略過選單設定。");
         return;
     }
 
     const botNo = process.env.LINE_WORKS_BOT_NO;
     const woffUrl = "https://woff.worksmobile.com/woff/hF-5w0yJz-rK-1MfqDtOeA";
 
-    // 設定選單結構
     const menuData = {
         name: "設備報修",
         content: {
@@ -63,7 +62,7 @@ async function setPersistentMenu() {
     });
 
     if (response.ok) {
-        console.log("✅ 成功建立 Bot 常駐選單 (Persistent Menu)！");
+        console.log("✅ 成功自動建立 Bot 常駐選單 (Persistent Menu)！");
     } else {
         const err = await response.text();
         console.error("❌ 建立選單失敗:", err);
