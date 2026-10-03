@@ -15,7 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const formData = new FormData(repairForm);
 
     try {
-      const response = await fetch("/api/repair", {
+      // 修正 API 路由位址為 /create-repair
+      const response = await fetch("/create-repair", {
         method: "POST",
         body: formData
       });
@@ -24,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (response.ok && result.success) {
         alert(`🎉 報修案件建立成功！案件單號：${result.repairId}`);
-        repairForm.reset(); // 清空表單
+        repairForm.reset(); // 清空表單內容
       } else {
         alert(`❌ 建立失敗：${result.message || result.error || "未知錯誤"}`);
       }
