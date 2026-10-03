@@ -1,10 +1,14 @@
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
+const multer = require("multer");
 const ragicService = require("./src/ragic");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 設定 multer 處理 FormData 上傳
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -16,7 +20,7 @@ function base64url(source) {
   return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-// 💡 透過 Private Key 自動產生 JWT 並取得 Access Token
+// 💡 透過 Private Key 自動簽署 JWT 換取 Access Token
 async function getAccessToken() {
   const clientId = process.env.LW_CLIENT_ID;
   const serviceAccount = process.env.LW_SERVICE_ACCOUNT;
@@ -26,7 +30,6 @@ async function getAccessToken() {
     throw new Error("缺少必要的環境變數 (LW_CLIENT_ID, LW_SERVICE_ACCOUNT, LW_PRIVATE_KEY)");
   }
 
-  // 處理 Private Key 換行符號
   privateKey = privateKey.replace(/\\n/g, "\n");
 
   const header = { alg: "RS256", typ: "JWT" };
@@ -49,7 +52,6 @@ async function getAccessToken() {
 
   const jwt = `${unsignedToken}.${signature}`;
 
-  // 向 LINE WORKS 請求 Access Token
   const params = new URLSearchParams();
   params.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
   params.append("client_id", clientId);
@@ -70,15 +72,15 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// POST 報修 API
-app.post("/api/repairs", async (req, res) => {
+// 💡 POST 報修 API (加入 upload.any() 正確解析 FormData)
+app.post("/api/repairs", upload.any(), async (req, res) => {
   try {
-    console.log("收到報修請求，req.body:", req.body);
+    console.log("收到報修請求，解析後的 req.body:", req.body);
 
-    // 1. 寫入 Ragic 並取得結果 (包含圖片 URL 與案件資料)
+    // 1. 寫入 Ragic 並取得結果
     const result = await ragicService.createRepair(req);
 
-    // 2. 取得表單欄位與 Ragic 回傳的圖片網址
+    // 2. 正確抓取解析後的欄位
     const { name, reporter, device, equipment, description, userId } = req.body;
     const finalUserId = userId || req.body.user_id;
     const displayName = reporter || name || "未提供";
@@ -87,10 +89,10 @@ app.post("/api/repairs", async (req, res) => {
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
-    // 3. 若有取得動態 userId，發送個人化報修紀錄訊息給該使用者
+    // 3. 發送 Bot 對話框訊息
     if (finalUserId) {
-      console.log(`準備發送訊息給用戶: ${finalUserId}`);
-      const accessToken = await getAccessToken(); // 自動簽署取得 Token
+      console.log(`準備發送 Bot 訊息給用戶: ${finalUserId}`);
+      const accessToken = await getAccessToken();
 
       // (A) 發送文字摘要
       const msgRes = await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
@@ -110,7 +112,7 @@ app.post("/api/repairs", async (req, res) => {
       const msgData = await msgRes.json();
       console.log("文字訊息發送結果:", msgData);
 
-      // (B) 若有照片，接著發送圖片訊息
+      // (B) 若有照片，發送圖片訊息
       if (imageUrl) {
         await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
           method: "POST",
@@ -128,7 +130,7 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("❌ 未接收到 userId，跳過 Bot 聊天室訊息發送");
+      console.log("❌ 依然未接收到 userId，請確認前端與 WOFF Scheme");
     }
 
     res.json({
@@ -144,14 +146,13 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 一鍵自動發行 Token + 設定 Persistent Menu API (使用 WOFF URL Scheme)
+// 💡 Persistent Menu 設定
 app.get("/setup-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
 
   try {
     const accessToken = await getAccessToken();
 
-    // 使用 LINE WORKS 官方的 WOFF Scheme，會強制原生的 WOFF 容器帶入使用者身分
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "POST",
       headers: {
@@ -174,7 +175,7 @@ app.get("/setup-menu", async (req, res) => {
     const data = await response.json();
 
     if (response.ok) {
-      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>已設定 WOFF Scheme 選單，請重新開啟 LINE WORKS App 進行測試。</p>");
+      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>請重新開啟 LINE WORKS App 測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
     }
