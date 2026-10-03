@@ -21,9 +21,10 @@ async function createRepairWithPhoto(req) {
         return reject(new Error("填報人、設備名稱、故障描述與緊急程度皆為必填！"));
       }
 
-      // ⚠️ 請直接在這裡貼上您的 Ragic API Key，測試授權是否成功
-      const apiKey = process.env.RAGIC_API_KEY || "dzUyaTY5S3ZGWWZOd1lFaklIVnRnOWIraUowS2tGK1VPS0k1VWJFV2ZkY3ZKR2hzWmVtOVdmODNKQmg3V284RTlKL3RnSkpXUTZBPQ";
-      
+      // 取得 Ragic 後台的原始純 API Key (無須 Base64)
+      let rawApiKey = process.env.RAGIC_API_KEY || "你的原始Ragic_API_Key";
+      let apiKey = rawApiKey.trim();
+
       let targetUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1";
 
       const ragicFormData = new FormData();
@@ -49,13 +50,13 @@ async function createRepairWithPhoto(req) {
       }
 
       try {
+        // 直接將 API Key 帶在 URL 參數中 (Ragic 官方支援的直接授權法)
         const requestUrl = `${targetUrl}?api&api_key=${encodeURIComponent(apiKey)}`;
-        console.log(`正在發送請求至 Ragic: ${targetUrl}?api (API Key 長度: ${apiKey.length})`);
+        console.log(`正在發送請求至 Ragic: ${targetUrl}?api`);
 
         const response = await fetch(requestUrl, {
           method: "POST",
           headers: {
-            Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
             ...ragicFormData.getHeaders()
           },
           body: ragicFormData
