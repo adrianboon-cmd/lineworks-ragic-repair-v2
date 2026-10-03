@@ -85,7 +85,7 @@ app.post("/api/repairs", async (req, res) => {
     // 2. 如果有 userId 或指定接收者，自動發送對話框紀錄
     if (userId || process.env.LW_TARGET_USER_ID) {
       const targetUserId = userId || process.env.LW_TARGET_USER_ID;
-      const accessToken = await getAccessToken(); // 使用剛才寫好的 JWT 自動簽署取得 Token
+      const accessToken = await getAccessToken(); // 自動簽署取得 Token
 
       // (A) 發送文字摘要
       await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${targetUserId}/messages`, {
@@ -164,7 +164,7 @@ app.get("/setup-menu", async (req, res) => {
 
     const data = await response.json();
 
-    if (response.ok) {pp.post("/api/repairs"
+    if (response.ok) {
       res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
