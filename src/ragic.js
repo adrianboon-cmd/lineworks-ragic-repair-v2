@@ -53,6 +53,13 @@ async function createRepairWithPhoto(req) {
       ragicFormData.append("1054336", priority);        // 緊急程度
       ragicFormData.append("1054237", "待處理");       // 案件狀態
 
+      // 🕒 自動取得當前時間並寫入 Ragic 的「填報時間」欄位 (ID: 1054239)
+      const now = new Date();
+      const pad = (num) => String(num).padStart(2, '0');
+      const formattedDate = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      
+      ragicFormData.append("1054239", formattedDate);   // 填報時間
+
       // 帶入照片 (欄位 ID: 1054243)
       if (photoFile && photoFile.size > 0) {
         try {
@@ -82,7 +89,7 @@ async function createRepairWithPhoto(req) {
 
         const ragicResult = await response.json();
 
-        // 相容 Ragic 的不同 Success 回應格式 (status: "SUCCESS", status: "ok", 或含有 ragicId)
+        // 相容 Ragic 的不同 Success 回應格式
         const isSuccess =
           response.ok &&
           (ragicResult.status === "ok" ||
