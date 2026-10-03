@@ -68,8 +68,8 @@ async function createRepairWithPhoto(req) {
       }
 
       // 4. 組裝網址 (將 API Key 直接帶在網址上)
-      const targetUrlWithKey = `${targetUrl}?api&api_key=${encodeURIComponent(apiKey)}`;
-
+const targetUrlWithKey = `${targetUrl}?api&key=${encodeURIComponent(apiKey)}`;
+      
       try {
         console.log(`正在發送請求至 Ragic...`);
 
