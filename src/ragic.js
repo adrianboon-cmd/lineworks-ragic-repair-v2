@@ -1,125 +1,70 @@
-const FormData = require("form-data");
-const fetch = require("node-fetch");
-const formidable = require("formidable");
-const fs = require("fs");
 const config = require("./config");
 
-async function createRepairWithPhoto(req) {
-  const form = formidable({ multiples: false, keepExtensions: true });
+const ragicService = {
+  createRepair: async (req) => {
+    try {
+      const { name, reporter, device, equipment, priority, description } = req.body;
+      const displayName = reporter || name || "";
+      const displayDevice = equipment || device || "";
 
-  return new Promise((resolve, reject) => {
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parsing error:", err);
-        return reject(new Error("解析報修表單失敗"));
+      // Ragic API 欄位對照（請確認與您的 Ragic 欄位編號一致）
+      const ragicData = {
+        "1000123": displayName,     // 報修人 (範例 ID，請依實際調整)
+        "1000124": displayDevice,   // 設備名稱
+        "1000125": priority || "一般", // 緊急程度
+        "1000126": description || ""  // 問題描述
+      };
+
+      const apiKey = process.env.RAGIC_API_KEY || config.RAGIC_API_KEY;
+      const formUrl = process.env.RAGIC_FORM_URL || config.RAGIC_FORM_URL;
+
+      if (!apiKey || !formUrl) {
+        throw new Error("Ragic 設定缺失：請檢查 RAGIC_API_KEY 與 RAGIC_FORM_URL 環境變數");
       }
 
-      const { reporter, equipment, priority, description } = fields;
-      const photoFile = files.photo;
+      console.log(`正在發送 API 請求至 Ragic: ${formUrl}`);
 
-      if (!reporter || !equipment || !description || !priority) {
-        return reject(new Error("填報人、設備名稱、故障描述與緊急程度皆為必填！"));
-      }
+      // 設定 8 秒逾時保護，避免 API 卡死
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      // 1. 取得 Ragic 原始 API Key (去除前後空白)
-      let rawApiKey =
-        process.env.RAGIC_API_KEY ||
-        (config.ragic && config.ragic.apiKey) ||
-        config.RAGIC_API_KEY ||
-        "";
+      const response = await fetch(formUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(ragicData),
+        signal: controller.signal
+      });
 
-      let apiKey = rawApiKey.trim();
+      clearTimeout(timeoutId);
 
-      if (!apiKey) {
-        return reject(new Error("伺服器未設定有效的 RAGIC_API_KEY"));
-      }
+      const resText = await response.text();
+      console.log("Ragic 原始回應內容:", resText);
 
-      // 2. 取得 Target URL
-      let targetUrl =
-        process.env.RAGIC_FORM_URL ||
-        process.env.RAGIC_BASE_URL ||
-        (config.ragic && config.ragic.baseUrl) ||
-        "https://ap3.ragic.com/fujifilmDemo/line-works/1";
-
-      if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-        targetUrl = `https://${targetUrl}`;
-      }
-
-      // 3. 建立 FormData 並填入資料
-      const ragicFormData = new FormData();
-      ragicFormData.append("1054240", reporter);        // 填報人
-      ragicFormData.append("1054241", equipment);       // 設備名稱
-      ragicFormData.append("1054242", description);     // 故障描述
-      ragicFormData.append("1054336", priority);        // 緊急程度
-      ragicFormData.append("1054237", "待處理");       // 案件狀態
-
-      // 🕒 自動取得當前時間並寫入 Ragic 的「填報時間」欄位 (ID: 1054239)
-      const now = new Date();
-      const pad = (num) => String(num).padStart(2, '0');
-      const formattedDate = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-      
-      ragicFormData.append("1054239", formattedDate);   // 填報時間
-
-      // 帶入照片 (欄位 ID: 1054243)
-      if (photoFile && photoFile.size > 0) {
-        try {
-          const fileStream = fs.createReadStream(photoFile.filepath);
-          ragicFormData.append("1054243", fileStream, {
-            filename: photoFile.originalFilename,
-            contentType: photoFile.mimetype
-          });
-          console.log(`準備上傳照片：${photoFile.originalFilename}`);
-        } catch (fileErr) {
-          console.error("照片處理失敗:", fileErr);
-        }
-      }
-
+      let resData;
       try {
-        console.log(`正在發送請求至 Ragic...`);
-
-        // 4. 將 API Key 放在 Authorization Header 中發送
-        const response = await fetch(`${targetUrl}?api`, {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
-            ...ragicFormData.getHeaders()
-          },
-          body: ragicFormData
-        });
-
-        const ragicResult = await response.json();
-
-        // 相容 Ragic 的不同 Success 回應格式
-        const isSuccess =
-          response.ok &&
-          (ragicResult.status === "ok" ||
-           ragicResult.status === "SUCCESS" ||
-           ragicResult.ragicId !== undefined);
-
-        if (isSuccess) {
-          const createdId = ragicResult.id || ragicResult.ragicId;
-          console.log(`案件建立成功！ID: ${createdId}`);
-          
-          if (photoFile && photoFile.filepath) {
-            fs.unlink(photoFile.filepath, () => {});
-          }
-
-          resolve({
-            success: true,
-            repairId: createdId
-          });
-        } else {
-          console.error("Ragic API error:", JSON.stringify(ragicResult));
-          reject(new Error(ragicResult.msg || "Ragic 資料庫寫入失敗"));
-        }
-      } catch (fetchErr) {
-        console.error("Fetch to Ragic failed:", fetchErr);
-        reject(new Error(`無法連接至 Ragic 資料庫: ${fetchErr.message}`));
+        resData = JSON.parse(resText);
+      } catch (e) {
+        resData = { raw: resText };
       }
-    });
-  });
-}
 
-module.exports = {
-  createRepair: createRepairWithPhoto
+      if (!response.ok) {
+        throw new Error(`Ragic API 傳回 HTTP 錯誤 ${response.status}: ${resText}`);
+      }
+
+      return resData;
+
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.error("❌ 連接 Ragic API 逾時 (超過 8 秒無回應)");
+        throw new Error("連接 Ragic 伺服器逾時，請檢查 Ragic 網址與網路設定");
+      }
+      console.error("❌ ragicService.createRepair 內部發生錯誤:", error.message);
+      throw error;
+    }
+  }
 };
+
+module.exports = ragicService;
