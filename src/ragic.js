@@ -8,12 +8,14 @@ async function createRepairRecord(data) {
         throw new Error("缺少 Ragic API 網址環境變數");
     }
 
-    // 使用 Render 環境變數中設定的 Ragic Field ID 作為 Key
+    // 對應 Ragic 各欄位的 Field ID
     const payload = {
         [process.env.RAGIC_FIELD_REPORTER || "1054240"]: data.reporter || "",
         [process.env.RAGIC_FIELD_EQUIPMENT || "1054241"]: data.equipmentName || "",
         [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
         [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
+        // 請確保這裡有對應到你的填報時間 Field ID（假設環境變數是 RAGIC_FIELD_TIME）
+        [process.env.RAGIC_FIELD_TIME || "你的填報時間FieldID"]: data.repairTime || "", 
         [process.env.RAGIC_FIELD_PHOTO || "1054243"]: data.photoUrl || ""
     };
 
