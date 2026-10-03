@@ -22,7 +22,7 @@ async function createRepairWithPhoto(req) {
       }
 
       // ⚠️ 請直接在這裡貼上您的 Ragic API Key，測試授權是否成功
-      const apiKey = process.env.RAGIC_API_KEY || "請在此處貼上您的RAGIC_API_KEY";
+      const apiKey = process.env.RAGIC_API_KEY || "dzUyaTY5S3ZGWWZOd1lFaklIVnRnOWIraUowS2tGK1VPS0k1VWJFV2ZkY3ZKR2hzWmVtOVdmODNKQmg3V284RTlKL3RnSkpXUTZBPQ==";
 
       let targetUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1";
 
