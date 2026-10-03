@@ -4,6 +4,7 @@ const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const multer = require("multer");
+const ragicService = require("./src/ragic.js"); // 導入您原本的 ragic 服務
 
 const app = express();
 app.use(express.json());
@@ -76,7 +77,7 @@ async function sendBotMessage(userId, text) {
   }
 }
 
-// 接收前端報修表單 API
+// 接收前端報修表單 API（結合圖片上傳與原本的 ragicService）
 app.post("/api/repairs", upload.single('image'), async (req, res) => {
   try {
     console.log("收到前端報修表單資料:", req.body);
@@ -85,61 +86,23 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     const formData = req.body;
     const imageFile = req.file;
 
-    // 讀取 Render 上設定的 Field ID
-    const fieldReporter = process.env.RAGIC_FIELD_REPORTER || "1054240";
-    const fieldEquipment = process.env.RAGIC_FIELD_EQUIPMENT || "1054238";
-    const fieldUrgency = process.env.RAGIC_FIELD_URGENCY || "1054233";
-    const fieldDescription = process.env.RAGIC_FIELD_DESCRIPTION || "1054236";
-    const fieldPhoto = process.env.RAGIC_FIELD_PHOTO || "1054243";
-    const fieldTime = process.env.RAGIC_FIELD_TIME || "1054237";
-
-    // 建立對應 Ragic Field ID 的 Payload
-    const ragicPayload = {
-      [fieldReporter]: formData.reporter || "",
-      [fieldEquipment]: formData.equipmentName || "",
-      [fieldUrgency]: formData.urgency || "",
-      [fieldDescription]: formData.description || "",
-      [fieldTime]: formData.repairTime || "",
+    // 將資料與圖片檔案包裝後交給 ragicService 處理
+    const repairData = {
+      ...formData,
       ...(imageFile && {
-        [fieldPhoto]: {
+        photoUrl: {
           value: imageFile.buffer.toString('base64'),
           name: imageFile.originalname
         }
       })
     };
 
-    console.log("準備送到 Ragic 的 Payload:", ragicPayload);
+    // 呼叫原本寫好的 ragicService 寫入資料庫
+    const result = await ragicService.createRepairRecord(repairData);
+    console.log("Ragic 寫入結果:", result);
 
-    // 正確的 Ragic API URL 格式 (包含完整的帳號/資料庫/表單路徑與 ?api&v=3)
-    const ragicApiKey = process.env.RAGIC_API_KEY;
-    const ragicApiUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1?api&v=3";
-
-    const ragicResponse = await axios.post(
-      ragicApiUrl, 
-      ragicPayload,
-      {
-        headers: {
-          ...(ragicApiKey && { 'Authorization': `Basic ${Buffer.from(ragicApiKey + ':').toString('base64')}` }),
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log("Ragic 回應結果:", ragicResponse.data);
-
-    // 正確解析 Ragic 回傳的案件編號 (rowId)
-    const responseData = ragicResponse.data;
-    let repairNo = "已成功建立";
-    
-    if (typeof responseData === 'object' && responseData !== null) {
-      // Ragic 成功新增時通常會回傳包含新資料 ID 的物件
-      const keys = Object.keys(responseData);
-      if (responseData.rowId) {
-        repairNo = responseData.rowId;
-      } else if (keys.length > 0) {
-        repairNo = responseData[keys[0]]?.rowId || keys[0];
-      }
-    }
+    // 取得正確的案件編號
+    const repairNo = result.rowId || result.id || "已成功建立";
 
     // 發送通知給 LINE WORKS 用戶
     if (formData.userId) {
@@ -162,8 +125,8 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     });
 
   } catch (error) {
-    console.error("報修處理失敗:", error.response?.data || error.message);
-    res.status(500).json({ success: false, error: error.response?.data || error.message });
+    console.error("報修處理失敗:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
