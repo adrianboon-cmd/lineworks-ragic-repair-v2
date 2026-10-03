@@ -68,7 +68,7 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// 💡 處理 LINE WORKS Webhook (發送純文字訊息，100% 避開按鈕攔截)
+// 💡 處理 LINE WORKS Webhook
 app.post("/callback", async (req, res) => {
   res.status(200).send("OK");
 
@@ -79,7 +79,6 @@ app.post("/callback", async (req, res) => {
       const botId = process.env.LW_BOT_ID || "13282881";
       const accessToken = await getAccessToken();
 
-      // 純文字訊息超連結，繞過 button_template 的系統封鎖
       await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
         method: "POST",
         headers: {
@@ -99,12 +98,12 @@ app.post("/callback", async (req, res) => {
   }
 });
 
-// 💡 POST 報修 API (加強 Log 輸出版本)
+// 💡 POST 報修 API (加強 Log 輸出與 Error Handling)
 app.post("/api/repairs", async (req, res) => {
   try {
     console.log("收到報修請求，req.body:", req.body);
 
-    // 呼叫 Ragic API
+    // 1. 寫入 Ragic
     const result = await ragicService.createRepair(req);
     console.log("Ragic 回傳結果:", result);
 
@@ -112,15 +111,15 @@ app.post("/api/repairs", async (req, res) => {
     const finalUserId = userId || req.body.user_id;
     const displayName = reporter || name || "未提供";
     const displayDevice = equipment || device || "未提供";
-    const imageUrl = result ? (result.imageUrl || result.pictureUrl) : null; 
+    const imageUrl = result ? (result.imageUrl || result.pictureUrl) : null;
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
+    // 2. 發送 LINE WORKS 訊息
     if (finalUserId) {
       console.log(`準備發送 Bot 訊息給用戶: ${finalUserId}`);
       const accessToken = await getAccessToken();
 
-      // (A) 發送文字摘要
       await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
         method: "POST",
         headers: {
@@ -135,7 +134,6 @@ app.post("/api/repairs", async (req, res) => {
         })
       });
 
-      // (B) 若有照片，發送圖片訊息
       if (imageUrl) {
         await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
           method: "POST",
@@ -153,39 +151,38 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("⚠️ 提示：未接收到 userId（如果是直接打開網頁測試屬正常現象）");
+      console.log("⚠️ 未接收到 userId（網頁直接開啓屬正常）");
     }
 
-    res.json({
+    // 3. 回傳成功給前端
+    return res.json({
       success: true,
       repairId: result ? (result.repairId || result.id) : null
     });
+
   } catch (error) {
-    console.error("❌ 建立 Ragic 報修單失敗，詳細錯誤原因:", error.response ? error.response.data : error.message);
-    res.status(500).json({
+    console.error("❌ 寫入 Ragic 失敗，詳細原因:", error.response ? error.response.data : error.message);
+    
+    // 💡 確保遭遇 Error 時立刻回傳 500 給前端，避免畫面一直卡在「正在送出...」
+    return res.status(500).json({
       success: false,
-      message: error.message || "建立報修單時發生伺服器錯誤"
+      message: error.message || "建立報修單失敗"
     });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-// 💡 強制刪除壞掉的 Persistent Menu (常駐選單)
+// 💡 刪除 Persistent Menu 路由
 app.get("/delete-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
   try {
     const accessToken = await getAccessToken();
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`
-      }
+      headers: { "Authorization": `Bearer ${accessToken}` }
     });
 
     if (response.ok || response.status === 204) {
-      res.send("<h1>🎉 已成功刪除壞掉的常駐選單！</h1><p>請完全重啟 LINE WORKS App 後再次測試。</p>");
+      res.send("<h1>🎉 已成功刪除常駐選單！</h1>");
     } else {
       const data = await response.json();
       res.status(400).json({ error: "刪除失敗", details: data });
@@ -193,4 +190,8 @@ app.get("/delete-menu", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
