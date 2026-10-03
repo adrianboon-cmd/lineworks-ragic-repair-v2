@@ -25,25 +25,18 @@ app.get("/app", (req, res) => {
 
 // 處理含有圖片/檔案的報修建立請求
 app.post("/api/repairs", async (req, res) => {
-  console.log("收到 POST /api/repairs (含有檔案)");
-
   try {
-    // 將完整的 req 物件傳給 ragic.js 進行 Formidable 解析
-    const result = await ragic.createRepair(req);
-
-    console.log("報修案件建立完成（包含照片）");
-
-    res.status(201).json({
+    const result = await ragicService.createRepair(req);
+    // 確保回傳 repairId 給前端
+    res.json({
       success: true,
-      message: "案件建立成功",
-      result
+      repairId: result.repairId || result.id
     });
   } catch (error) {
-    console.error("建立案件失敗:", error.message);
-
+    console.error("建立報修單失敗:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "建立案件失敗"
+      message: error.message
     });
   }
 });
