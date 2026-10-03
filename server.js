@@ -1,14 +1,10 @@
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
-const multer = require("multer");
 const ragicService = require("./src/ragic");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 設定 multer 處理 FormData 上傳
-const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -72,15 +68,15 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// 💡 POST 報修 API (加入 upload.any() 正確解析 FormData)
-app.post("/api/repairs", upload.any(), async (req, res) => {
+// 💡 POST 報修 API
+app.post("/api/repairs", async (req, res) => {
   try {
-    console.log("收到報修請求，解析後的 req.body:", req.body);
+    console.log("收到報修請求，req.body:", req.body);
 
     // 1. 寫入 Ragic 並取得結果
     const result = await ragicService.createRepair(req);
 
-    // 2. 正確抓取解析後的欄位
+    // 2. 抓取解析後的欄位
     const { name, reporter, device, equipment, description, userId } = req.body;
     const finalUserId = userId || req.body.user_id;
     const displayName = reporter || name || "未提供";
