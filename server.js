@@ -16,7 +16,7 @@ function base64url(source) {
     return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-// 取得 LINE WORKS Access Token (標準 Service Account JWT 流程)
+// 取得 LINE WORKS Access Token (正確的 Service Account JWT 格式)
 async function getAccessToken() {
     const clientId = process.env.LW_CLIENT_ID;
     const clientSecret = process.env.LW_CLIENT_SECRET;
@@ -50,12 +50,12 @@ async function getAccessToken() {
 
     const jwt = `${signatureInput}.${signature}`;
 
+    // 依照 LINE WORKS Server API 規範，使用正確的 body 參數與 content-type
     const params = new URLSearchParams();
     params.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-    params.append("client_id", clientId);
-    params.append("client_secret", clientSecret || "");
     params.append("assertion", jwt);
-    // 注意：這裡絕對不帶 scope，權限完全由 Console 繫結決定
+    params.append("client_id", clientId);
+    params.append("client_secret", clientSecret);
 
     const response = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
         method: "POST",
@@ -126,5 +126,5 @@ app.get("/api/setup-menu", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`伺服器正在 Port ${PORT} 上執行`);
+    console.log(`伺服器正在 Port ${PORT} บน執行`);
 });
