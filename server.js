@@ -24,13 +24,12 @@ app.post("/webhook", async (req, res) => {
 // 接收前端報修表單並寫入 Ragic
 app.post("/api/repairs", async (req, res) => {
     try {
-        console.log("收到報修表單資料:", req.body);
+        console.log("收到前端報修表單:", req.body);
         
-        // 呼叫 ragicService 將資料寫入 Ragic
         const result = await ragicService.createRepairRecord(req.body);
         
-        // 從 Ragic 回傳結果中取出案件編號
-        const repairNo = result.rowId || result.no || result.id || "已成功建立";
+        // 優先抓取 Ragic 回傳的 ragicId 作為案件編號
+        const repairNo = result.ragicId || result.rowId || result.id || "已成功建立";
         
         res.status(200).json({ 
             success: true, 
@@ -38,7 +37,7 @@ app.post("/api/repairs", async (req, res) => {
             data: result 
         });
     } catch (error) {
-        console.error("寫入 Ragic 發生錯誤:", error);
+        console.error("後端處理錯誤:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
