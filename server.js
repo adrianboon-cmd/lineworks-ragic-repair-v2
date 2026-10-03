@@ -90,13 +90,13 @@ app.post("/callback", async (req, res) => {
           content: {
             type: "button_template",
             contentText: "🛠️️ 歡迎使用設備報修系統\n請點擊下方按鈕開始填寫報修單：",
-            actions: [
-              {
-                type: "uri",
-                label: "🔧 點我填寫報修單",
-                uri: `https://lineworks-ragic-repair-v2.onrender.com?userId=${userId}`
-              }
-            ]
+actions: [
+  {
+    type: "uri",
+    label: "🔍 測試開啟 Google",
+    uri: "https://www.google.com"
+  }
+]
           }
         })
       });
