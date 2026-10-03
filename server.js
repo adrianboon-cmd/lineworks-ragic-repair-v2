@@ -30,7 +30,7 @@ app.get("/api/setup-menu", async (req, res) => {
             throw new Error("缺少 BOT_SECRET 環境變數");
         }
 
-        // 1. 透過 Bot Secret 取得 Bot 專屬 Access Token (完全不需 JWT 與 scope)
+        // 1. 取得 Bot Token (修正 Header 格式)
         const tokenResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/token`, {
             method: "POST",
             headers: {
@@ -43,7 +43,12 @@ app.get("/api/setup-menu", async (req, res) => {
         if (!tokenResponse.ok) {
             throw new Error(`取得 Bot Token 失敗: ${JSON.stringify(tokenData)}`);
         }
-        const accessToken = tokenData.token;
+        
+        // 支援多種回傳格式的 Token 欄位
+        const accessToken = tokenData.token || tokenData.access_token;
+        if (!accessToken) {
+            throw new Error(`無法解析 Token: ${JSON.stringify(tokenData)}`);
+        }
 
         // 2. 設定常駐選單
         const menuResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
