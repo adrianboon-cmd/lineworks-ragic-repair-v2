@@ -67,15 +67,16 @@ async function createRepairWithPhoto(req) {
         }
       }
 
-      // 4. 組裝網址 (將 API Key 直接帶在網址上)
-const targetUrlWithKey = `${targetUrl}?api&key=${encodeURIComponent(apiKey)}`;
-      
       try {
         console.log(`正在發送請求至 Ragic...`);
 
-        const response = await fetch(targetUrlWithKey, {
+        // 4. 將 API Key 放在 Authorization Header 中發送
+        const response = await fetch(`${targetUrl}?api`, {
           method: "POST",
-          headers: ragicFormData.getHeaders(),
+          headers: {
+            Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+            ...ragicFormData.getHeaders()
+          },
           body: ragicFormData
         });
 
