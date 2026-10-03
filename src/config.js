@@ -21,9 +21,12 @@ validateEnvironment();
 module.exports = {
   port: process.env.PORT || 3000,
 
+// ...前面的程式碼保持不變 (1~22行)
+
   ragic: {
     apiKey: process.env.RAGIC_API_KEY,
     baseUrl:
+      process.env.RAGIC_FORM_URL ||
       process.env.RAGIC_BASE_URL ||
       "https://ap3.ragic.com/fujifilmDemo/line-works/1",
 
@@ -42,7 +45,8 @@ module.exports = {
         process.env.RAGIC_FIELD_LINEWORKS_USER_ID || "1054335",
       priority: process.env.RAGIC_FIELD_PRIORITY || "1054336"
     }
-  },
+  }
+};
 
   lineworks: {
     clientId: process.env.LW_CLIENT_ID,
