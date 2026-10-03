@@ -121,3 +121,72 @@ app.post("/api/repairs", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`伺服器正在 Port ${PORT} 上執行`);
 });
+
+// 假設這是您原本接收 LINE WORKS Webhook 事件的路由
+app.post('/callback', async (req, res) => {
+    try {
+        const events = req.body.events;
+        if (!events || events.length === 0) {
+            return res.status(200).send('OK');
+        }
+
+        for (const event of events) {
+            // 檢查是否為使用者傳送的文字訊息
+            if (event.type === 'message' && event.message.type === 'text') {
+                const userText = event.message.text.trim();
+                const userId = event.source.userId;
+                const channelId = event.source.channelId;
+
+                // 當使用者輸入「報修」或「選單」時
+                if (userText === '報修' || userText === '設備報修') {
+                    const woffUrl = "https://woff.worksmobile.com/woff/hF-5w0yJz-rK-1MfqDtOeA";
+                    
+                    const buttonMessagePayload = {
+                        content: {
+                            type: "button",
+                            text: "請點擊下方按鈕開啟設備報修系統：",
+                            actions: [
+                                {
+                                    type: "uri",
+                                    label: "🔧 設備報修",
+                                    uri: woffUrl
+                                }
+                            ]
+                        }
+                    };
+
+                    await sendBotMessage(userId, channelId, buttonMessagePayload);
+                }
+            }
+        }
+
+        res.status(200).send('OK');
+    } catch (error) {
+        console.error("Webhook 處理錯誤:", error);
+        res.status(500).send('Error');
+    }
+});
+
+// 發送按鈕訊息的輔助函式
+async function sendBotMessage(userId, channelId, messagePayload) {
+    const accessToken = await getAccessToken(); // 使用您原本取得 Token 的函式
+    const botNo = process.env.LINE_WORKS_BOT_NO;
+
+    let targetUrl = "";
+    if (channelId) {
+        targetUrl = `https://www.worksapis.com/v1.0/bots/${botNo}/channels/${channelId}/messages`;
+    } else if (userId) {
+        targetUrl = `https://www.worksapis.com/v1.0/bots/${botNo}/users/${userId}/messages`;
+    } else {
+        return;
+    }
+
+    await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(messagePayload)
+    });
+}
