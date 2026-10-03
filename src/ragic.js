@@ -14,8 +14,7 @@ async function createRepairRecord(data) {
         [process.env.RAGIC_FIELD_EQUIPMENT || "1054241"]: data.equipmentName || "",
         [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
         [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
-        // 請確保這裡有對應到你的填報時間 Field ID（假設環境變數是 RAGIC_FIELD_TIME）
-        [process.env.RAGIC_FIELD_TIME || "你的填報時間FieldID"]: data.repairTime || "", 
+        [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || "", // 已對應填報時間欄位代號
         [process.env.RAGIC_FIELD_PHOTO || "1054243"]: data.photoUrl || ""
     };
 
