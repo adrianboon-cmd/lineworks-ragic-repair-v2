@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const ragicService = require("./src/ragic");
 
 const app = express();
@@ -20,23 +21,33 @@ app.post("/webhook", async (req, res) => {
     }
 });
 
-// 自動設定 LINE WORKS WOFF 常駐選單的路由
+// 自動設定 LINE WORKS 常駐選單的路由 (透過 JWT 授權)
 app.get("/api/setup-menu", async (req, res) => {
     try {
         const botId = process.env.BOT_ID || "13282881";
-        const clientSecret = process.env.LW_CLIENT_SECRET || process.env.BOT_SECRET;
-        const clientId = "12waaFaUV8BVsKxiPysY"; // 來自你的 Developer Console
+        const clientId = process.env.LW_CLIENT_ID || "12waaFaUV8BVsKxiPysY";
+        const serviceAccount = process.env.LW_SERVICE_ACCOUNT || "pzoi8.serviceaccount@fbtw2";
+        const privateKey = process.env.LW_PRIVATE_KEY; // 必須在 Render 填入私鑰字串
 
-        if (!clientSecret) {
-            throw new Error("缺少 Client Secret 環境變數");
+        if (!privateKey) {
+            throw new Error("缺少 LW_PRIVATE_KEY 環境變數");
         }
 
-        // 1. 取得 Bot Token (使用標準的 Client Credentials 驗證)
+        // 1. 產生 JWT 簽章
+        const now = Math.floor(Date.now() / 1000);
+        const payload = {
+            iss: clientId,
+            sub: serviceAccount,
+            iat: now,
+            exp: now + 3600
+        };
+
+        const assertion = jwt.sign(payload, privateKey.replace(/\\n/g, '\n'), { algorithm: 'RS256' });
+
+        // 2. 向 LINE WORKS 換取 Access Token
         const tokenParams = new URLSearchParams();
-        tokenParams.append("grant_type", "client_credentials");
-        tokenParams.append("client_id", clientId);
-        tokenParams.append("client_secret", clientSecret);
-        tokenParams.append("scope", "bot");
+        tokenParams.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
+        tokenParams.append("assertion", assertion);
 
         const tokenResponse = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
             method: "POST",
@@ -46,12 +57,12 @@ app.get("/api/setup-menu", async (req, res) => {
 
         const tokenData = await tokenResponse.json();
         if (!tokenResponse.ok) {
-            throw new Error(`取得 Token 失敗: ${JSON.stringify(tokenData)}`);
+            throw new Error(`JWT Token 取得失敗: ${JSON.stringify(tokenData)}`);
         }
 
         const accessToken = tokenData.access_token;
 
-        // 2. 設定 WOFF 常駐選單 (將 uri 指向你的 WOFF 網址或 Render 網址)
+        // 3. 設定 WOFF 常駐選單
         const menuResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
             method: "POST",
             headers: {
@@ -64,7 +75,7 @@ app.get("/api/setup-menu", async (req, res) => {
                         {
                             type: "uri",
                             label: "線上報修",
-                            uri: "https://lineworks-ragic-repair-v2.onrender.com" // 也可以替換為您的 WOFF URL
+                            uri: "https://lineworks-ragic-repair-v2.onrender.com"
                         }
                     ]
                 }
@@ -76,7 +87,7 @@ app.get("/api/setup-menu", async (req, res) => {
             throw new Error(`設定選單失敗: ${resText}`);
         }
 
-        res.json({ success: true, message: "WOFF 常駐選單設定成功！" });
+        res.json({ success: true, message: "常駐選單設定成功！" });
     } catch (error) {
         console.error("❌ 設定常駐選單錯誤:", error.message);
         res.status(500).json({ success: false, error: error.message });
