@@ -7,7 +7,7 @@ const ragicService = {
       const displayName = reporter || name || "";
       const displayDevice = equipment || device || "";
 
-      // 💡 正確的 Ragic 欄位 ID 對照表
+      // 1. 寫入 Ragic 的欄位（不帶案件編號，讓 Ragic 自動編碼）
       const ragicData = {
         "1054240": displayName,           // 報修人
         "1054241": displayDevice,         // 設備名稱
@@ -22,12 +22,12 @@ const ragicService = {
         throw new Error("Ragic 設定缺失：請檢查 RAGIC_API_KEY 與 RAGIC_FORM_URL 環境變數");
       }
 
-      console.log(`正在發送 API 請求至 Ragic: ${formUrl}`);
+      console.log(`正在發送 API POST 請求至 Ragic: ${formUrl}`);
 
-      // 設定 8 秒逾時保護
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
+      // (A) 發送 POST 寫入 Ragic
       const response = await fetch(formUrl, {
         method: "POST",
         headers: {
@@ -41,7 +41,7 @@ const ragicService = {
       clearTimeout(timeoutId);
 
       const resText = await response.text();
-      console.log("Ragic 原始回應內容:", resText);
+      console.log("Ragic POST 回應內容:", resText);
 
       let resData;
       try {
@@ -50,11 +50,43 @@ const ragicService = {
         resData = { raw: resText };
       }
 
-      if (!response.ok) {
-        throw new Error(`Ragic API 傳回 HTTP 錯誤 ${response.status}: ${resText}`);
+      if (!response.ok || resData.status !== "SUCCESS") {
+        throw new Error(`Ragic API 寫入失敗: ${resText}`);
       }
 
-      return resData;
+      // (B) 取得 Ragic 新增資料的 ID (ragicId)
+      const ragicId = resData.ragicId;
+      let caseNumber = `RAGIC-#${ragicId}`; // 預設備用單號
+
+      // (C) 拿 ragicId 向 Ragic 查詢剛剛自動產生的流水號 (MMDD-00X)
+      if (ragicId) {
+        try {
+          const detailUrl = `${formUrl.replace(/\?.*$/, '')}/${ragicId}`;
+          console.log(`正在向 Ragic 查詢完整案件紀錄: ${detailUrl}`);
+
+          const detailRes = await fetch(detailUrl, {
+            method: "GET",
+            headers: {
+              "Authorization": `Basic ${Buffer.from(apiKey + ":").toString("base64")}`
+            }
+          });
+
+          if (detailRes.ok) {
+            const detailData = await detailRes.json();
+            // 從 Ragic 欄位取得自動編號（如果您的案件編號欄位 ID 不是 1054239，請替換）
+            caseNumber = detailData["1054239"] || detailData._ragicId || caseNumber;
+            console.log(`✅ 成功取得 Ragic 自動編號: ${caseNumber}`);
+          }
+        } catch (fetchErr) {
+          console.warn("⚠️ 取得自動編號詳細資料失敗，使用預設 ID:", fetchErr.message);
+        }
+      }
+
+      return {
+        success: true,
+        ragicId: ragicId,
+        caseNumber: caseNumber // 回傳 Ragic 的案件編號 (例如 1012-001)
+      };
 
     } catch (error) {
       if (error.name === "AbortError") {
