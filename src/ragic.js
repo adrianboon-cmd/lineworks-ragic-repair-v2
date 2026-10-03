@@ -1,77 +1,48 @@
-const config = require("./config");
+const fetch = require("node-fetch");
 
-const ragicService = {
-  createRepair: async (req) => {
-    try {
-      const { name, reporter, device, equipment, priority, description } = req.body;
-      const displayName = reporter || name || "";
-      const displayDevice = equipment || device || "";
+/**
+ * 建立報修記錄並寫入 Ragic
+ * @param {Object} data - 前端傳來的表單資料
+ */
+async function createRepairRecord(data) {
+    // 取得 Ragic API 相關設定（建議從環境變數讀取，或替換為你的 Ragic API URL 與 Key）
+    const ragicApiUrl = process.env.RAGIC_API_URL;
+    const ragicApiKey = process.env.RAGIC_API_KEY;
 
-      const ragicData = {
-        "1054240": displayName,
-        "1054241": displayDevice,
-        "1054336": priority || "一般",
-        "1054242": description || ""
-      };
+    if (!ragicApiUrl) {
+        throw new Error("缺少 RAGIC_API_URL 環境變數");
+    }
 
-      const apiKey = process.env.RAGIC_API_KEY || config.RAGIC_API_KEY;
-      const formUrl = process.env.RAGIC_FORM_URL || config.RAGIC_FORM_URL;
+    // 組織要寫入 Ragic 的資料格式
+    const payload = {
+        // 根據你的 Ragic 欄位名稱進行對應
+        "填報人": data.reporter || "",
+        "設備名稱": data.equipmentName || "",
+        "故障描述": data.description || "",
+        "照片": data.photoUrl || ""
+    };
 
-      if (!apiKey || !formUrl) {
-        throw new Error("Ragic 設定缺失：請檢查 RAGIC_API_KEY 與 RAGIC_FORM_URL 環境變數");
-      }
+    console.log("正在發送請求至 Ragic...", payload);
 
-      console.log(`POST 寫入 Ragic...`);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const response = await fetch(formUrl, {
+    const response = await fetch(ragicApiUrl, {
         method: "POST",
         headers: {
-          "Authorization": `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
-          "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...(ragicApiKey ? { "Authorization": `Basic ${Buffer.from(ragicApiKey + ":").toString("base64")}` } : {})
         },
-        body: JSON.stringify(ragicData),
-        signal: controller.signal
-      });
+        body: JSON.stringify(payload)
+    });
 
-      clearTimeout(timeoutId);
+    const result = await response.json();
 
-      const resText = await response.text();
-      console.log("Ragic POST 回應:", resText);
-
-      let resData;
-      try {
-        resData = JSON.parse(resText);
-      } catch (e) {
-        resData = { raw: resText };
-      }
-
-      if (!response.ok || resData.status !== "SUCCESS") {
-        throw new Error(`Ragic API 寫入失敗: ${resText}`);
-      }
-
-      const ragicId = resData.ragicId;
-      
-      // 直接對齊 Ragic 的 ragicId，格式如：RAGIC-#30
-      const caseNumber = `RAGIC-#${ragicId}`;
-
-      return {
-        success: true,
-        ragicId: ragicId,
-        caseNumber: caseNumber
-      };
-
-    } catch (error) {
-      if (error.name === "AbortError") {
-        console.error("❌ 連接 Ragic API 逾時");
-        throw new Error("連接 Ragic 伺服器逾時");
-      }
-      console.error("❌ ragicService.createRepair 內部錯誤:", error.message);
-      throw error;
+    if (!response.ok) {
+        throw new Error(`Ragic 寫入失敗: ${JSON.stringify(result)}`);
     }
-  }
-};
 
-module.exports = ragicService;
+    return result;
+}
+
+// 確保正確導出函式供 server.js 呼叫
+module.exports = {
+    createRepairRecord
+};
