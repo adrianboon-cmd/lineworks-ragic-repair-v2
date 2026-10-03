@@ -5,17 +5,16 @@ const fetch = require("node-fetch");
  * @param {Object} data - 前端傳來的表單資料
  */
 async function createRepairRecord(data) {
-    // 取得 Ragic API 相關設定（建議從環境變數讀取，或替換為你的 Ragic API URL 與 Key）
-    const ragicApiUrl = process.env.RAGIC_API_URL;
+    // 讀取原本在 Render 設定好的 RAGIC_BASE_URL
+    const ragicApiUrl = process.env.RAGIC_BASE_URL || process.env.RAGIC_API_URL;
     const ragicApiKey = process.env.RAGIC_API_KEY;
 
     if (!ragicApiUrl) {
-        throw new Error("缺少 RAGIC_API_URL 環境變數");
+        throw new Error("缺少 RAGIC_BASE_URL 環境變數");
     }
 
     // 組織要寫入 Ragic 的資料格式
     const payload = {
-        // 根據你的 Ragic 欄位名稱進行對應
         "填報人": data.reporter || "",
         "設備名稱": data.equipmentName || "",
         "故障描述": data.description || "",
@@ -42,7 +41,6 @@ async function createRepairRecord(data) {
     return result;
 }
 
-// 確保正確導出函式供 server.js 呼叫
 module.exports = {
     createRepairRecord
 };
