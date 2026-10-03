@@ -82,19 +82,28 @@ async function createRepairWithPhoto(req) {
 
         const ragicResult = await response.json();
 
-        if (response.ok && ragicResult.status === "ok") {
-          console.log(`案件建立成功！ID: ${ragicResult.id}`);
+        // 相容 Ragic 的不同 Success 回應格式 (status: "SUCCESS", status: "ok", 或含有 ragicId)
+        const isSuccess =
+          response.ok &&
+          (ragicResult.status === "ok" ||
+           ragicResult.status === "SUCCESS" ||
+           ragicResult.ragicId !== undefined);
+
+        if (isSuccess) {
+          const createdId = ragicResult.id || ragicResult.ragicId;
+          console.log(`案件建立成功！ID: ${createdId}`);
+          
           if (photoFile && photoFile.filepath) {
             fs.unlink(photoFile.filepath, () => {});
           }
 
           resolve({
             success: true,
-            repairId: ragicResult.id
+            repairId: createdId
           });
         } else {
           console.error("Ragic API error:", JSON.stringify(ragicResult));
-          reject(new Error(ragicResult.msg || "Ragic 資料庫權限或建立失敗"));
+          reject(new Error(ragicResult.msg || "Ragic 資料庫寫入失敗"));
         }
       } catch (fetchErr) {
         console.error("Fetch to Ragic failed:", fetchErr);
