@@ -1,47 +1,11 @@
-const express = require("express");
-const path = require("path");
-const ragic = require("./src/ragic");
-
-const app = express();
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
-
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "lineworks-ragic-repair-v2"
-  });
-});
-
-app.get("/", (req, res) => {
-  res.send(
-    "LINE WORKS Ragic Repair V2 Running"
-  );
-});
-
-app.get("/app", (req, res) => {
-  res.sendFile(
-    path.join(
-      __dirname,
-      "public",
-      "index.html"
-    )
-  );
-});
-
 app.post("/api/repairs", async (req, res) => {
-  console.log(
-    "收到 POST /api/repairs:",
-    JSON.stringify(req.body)
-  );
+  console.log("收到 POST /api/repairs (含有檔案)");
 
   try {
-    const result =
-      await ragic.createRepair(req.body);
+    // 這裡我們直接把 'req' 傳進去，不解析 req.body
+    const result = await ragic.createRepair(req);
 
-    console.log("報修案件建立完成");
+    console.log("報修案件建立完成（包含照片）");
 
     res.status(201).json({
       success: true,
@@ -49,27 +13,11 @@ app.post("/api/repairs", async (req, res) => {
       result
     });
   } catch (error) {
-    console.error(
-      "建立案件失敗:",
-      error.response?.data || error.message
-    );
+    console.error("建立案件失敗:", error.message);
 
-    res.status(
-      error.response?.status || 500
-    ).json({
+    res.status(500).json({
       success: false,
-      message:
-        error.response?.data?.msg ||
-        error.message ||
-        "建立案件失敗"
+      message: error.message || "建立案件失敗"
     });
   }
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(
-    `Server running on ${PORT}`
-  );
 });
