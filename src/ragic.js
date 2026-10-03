@@ -21,30 +21,10 @@ async function createRepairWithPhoto(req) {
         return reject(new Error("填報人、設備名稱、故障描述與緊急程度皆為必填！"));
       }
 
-      // 取得 Ragic API Key 與 Base URL (相容不同的 config 結構)
-      const apiKey =
-        process.env.RAGIC_API_KEY ||
-        (config.ragic && config.ragic.apiKey) ||
-        config.RAGIC_API_KEY;
+      // ⚠️ 請直接在這裡貼上您的 Ragic API Key，測試授權是否成功
+      const apiKey = process.env.RAGIC_API_KEY || "請在此處貼上您的RAGIC_API_KEY";
 
-      let targetUrl =
-        process.env.RAGIC_FORM_URL ||
-        process.env.RAGIC_BASE_URL ||
-        (config.ragic && config.ragic.baseUrl) ||
-        config.RAGIC_FORM_URL ||
-        "";
-
-      if (!targetUrl) {
-        return reject(new Error("伺服器未設定 RAGIC_FORM_URL 環境變數"));
-      }
-
-      if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-        targetUrl = `https://${targetUrl}`;
-      }
-
-      if (!apiKey) {
-        return reject(new Error("伺服器未設定 RAGIC_API_KEY 環境變數"));
-      }
+      let targetUrl = "https://ap3.ragic.com/fujifilmDemo/line-works/1";
 
       const ragicFormData = new FormData();
 
@@ -63,16 +43,14 @@ async function createRepairWithPhoto(req) {
             filename: photoFile.originalFilename,
             contentType: photoFile.mimetype
           });
-          console.log(`準備上傳照片：${photoFile.originalFilename}`);
         } catch (fileErr) {
           console.error("照片處理失敗:", fileErr);
         }
       }
 
       try {
-        // 同時透過 Authorization Header 與 API Key 參數傳送，確保 Ragic 成功驗證
         const requestUrl = `${targetUrl}?api&api_key=${encodeURIComponent(apiKey)}`;
-        console.log(`正在發送請求至 Ragic: ${targetUrl}?api`);
+        console.log(`正在發送請求至 Ragic: ${targetUrl}?api (API Key 長度: ${apiKey.length})`);
 
         const response = await fetch(requestUrl, {
           method: "POST",
