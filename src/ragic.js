@@ -41,7 +41,7 @@ const ragicService = {
       clearTimeout(timeoutId);
 
       const resText = await response.text();
-      console.log("Ragic POST 回應內容:", resText);
+      console.log("Ragic POST 原始回應內容:", resText);
 
       let resData;
       try {
@@ -58,11 +58,13 @@ const ragicService = {
       const ragicId = resData.ragicId;
       let caseNumber = `RAGIC-#${ragicId}`; // 預設備用單號
 
-      // (C) 拿 ragicId 向 Ragic 查詢剛剛自動產生的流水號 (MMDD-00X)
+      // (C) 拿 ragicId 向 Ragic 查詢剛剛自動產生的流水號 (例如 1003-001)
       if (ragicId) {
         try {
-          const detailUrl = `${formUrl.replace(/\?.*$/, '')}/${ragicId}`;
-          console.log(`正在向 Ragic 查詢完整案件紀錄: ${detailUrl}`);
+          // 清除 URL 參數並補上 /ragicId?api
+          const baseUrl = formUrl.replace(/\?.*$/, "");
+          const detailUrl = `${baseUrl}/${ragicId}?api`;
+          console.log(`正在查詢 Ragic 完整資料: ${detailUrl}`);
 
           const detailRes = await fetch(detailUrl, {
             method: "GET",
@@ -72,28 +74,55 @@ const ragicService = {
           });
 
           if (detailRes.ok) {
-            const detailData = await detailRes.json();
-            // 從 Ragic 欄位取得自動編號（如果您的案件編號欄位 ID 不是 1054239，請替換）
-            caseNumber = detailData["1054239"] || detailData._ragicId || caseNumber;
-            console.log(`✅ 成功取得 Ragic 自動編號: ${caseNumber}`);
+            const detailText = await detailRes.text();
+            console.log("Ragic 詳細紀錄 GET 回應:", detailText);
+
+            let detailData = JSON.parse(detailText);
+
+            // 如果 Ragic 包裹在 { "27": { ... } } 層級下，自動拆解
+            if (detailData[ragicId]) {
+              detailData = detailData[ragicId];
+            }
+
+            // 尋找「案件編號」的真實數值 (依序嘗試常見欄位 ID，或直接遍歷所有 Key 尋找 1003- 等格式)
+            caseNumber = detailData["1054239"] || detailData["1054238"] || detailData["1054240_NO"] || null;
+
+            if (!caseNumber) {
+              // 自動搜尋回傳物件中符合 MMDD-XXX 格式的字串
+              const keys = Object.keys(detailData);
+              for (const key of keys) {
+                const val = String(detailData[key]);
+                if (/^\d{4}-\d{3,}$/.test(val)) {
+                  caseNumber = val;
+                  console.log(`🔍 從 key [${key}] 自動辨識出案件編號: ${caseNumber}`);
+                  break;
+                }
+              }
+            }
+
+            if (!caseNumber) {
+              caseNumber = `RAGIC-#${ragicId}`;
+            }
+
+            console.log(`✅ 最終確定案件編號: ${caseNumber}`);
           }
         } catch (fetchErr) {
-          console.warn("⚠️ 取得自動編號詳細資料失敗，使用預設 ID:", fetchErr.message);
+          console.warn("⚠️ 取得自動編號詳細資料失敗:", fetchErr.message);
         }
       }
 
       return {
         success: true,
         ragicId: ragicId,
-        caseNumber: caseNumber // 回傳 Ragic 的案件編號 (例如 1012-001)
+        caseNumber: caseNumber // 成功傳回 1003-001
       };
 
     } catch (error) {
       if (error.name === "AbortError") {
-        console.error("❌ 連接 Ragic API 逾時 (超過 8 秒無回應)");
-        throw new Error("連接 Ragic 伺服器逾時，請檢查 Ragic 網址與網路設定");
+        console.error("❌ 連接 Ragic API 逾時");
+        throw new Error("連接 Ragic 伺服器逾時");
       }
-      console.error("❌ ragicService.createRepair 內部發生錯誤:", error.message);
+      console.error("❌ ragicService.createRepair 內部錯誤:", error.message);
       throw error;
     }
   }
