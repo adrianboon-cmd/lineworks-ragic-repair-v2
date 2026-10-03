@@ -1,23 +1,22 @@
-// 💡 從 URL Query 參數或 WOFF Profile 中取得 userId (參考 visit-report 機制)
-function getUserId() {
-  const urlParams = new URLSearchParams(window.location.search);
-  let uid = urlParams.get("userId") || urlParams.get("user_id") || urlParams.get("uid");
+let currentUserId = "";
 
-  if (!uid && typeof woff !== "undefined" && woff.getProfile) {
-    woff.getProfile()
-      .then((profile) => {
-        if (profile && profile.userId) {
-          window.currentUserId = profile.userId;
-        }
-      })
-      .catch(() => {});
-  }
-  return uid || window.currentUserId || "";
-}
-
-// 網頁載入時初始化 WOFF
-if (typeof woff !== "undefined" && woff.init) {
-  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" }).catch(() => {});
+// 1. 初始化 WOFF 並取得目前使用者的 profile (userId)
+if (typeof woff !== "undefined") {
+  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
+    .then(() => {
+      if (woff.isLoggedIn && woff.isLoggedIn()) {
+        return woff.getProfile();
+      } else if (woff.getProfile) {
+        return woff.getProfile();
+      }
+    })
+    .then((profile) => {
+      if (profile && profile.userId) {
+        currentUserId = profile.userId;
+        console.log("成功取得 LINE WORKS UserId:", currentUserId);
+      }
+    })
+    .catch((err) => console.error("WOFF 取得 Profile 失敗:", err));
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -33,45 +32,33 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.disabled = true;
     submitBtn.textContent = "正在送出報修單...";
 
-    // 1. 取得 userId
-    let userId = getUserId();
+    // 從網址列或 WOFF 取得 userId
+    const urlParams = new URLSearchParams(window.location.search);
+    const userIdFromUrl = urlParams.get("userId") || urlParams.get("user_id");
+    const finalUserId = currentUserId || userIdFromUrl || "";
 
-    // 如果還是沒抓到，嘗試從 woff 再同步讀一次
-    if (!userId && typeof woff !== "undefined" && woff.getProfile) {
-      try {
-        const profile = await woff.getProfile();
-        if (profile && profile.userId) userId = profile.userId;
-      } catch (err) {}
-    }
-
-    const formData = new FormData();
-    
     const reporter = document.getElementById("reporter")?.value || "";
     const equipment = document.getElementById("equipment")?.value || "";
     const priority = document.getElementById("priority")?.value || "";
     const description = document.getElementById("description")?.value || "";
-    const photoInput = document.getElementById("photo");
 
-    formData.append("reporter", reporter);
-    formData.append("equipment", equipment);
-    formData.append("priority", priority);
-    formData.append("description", description);
-    
-    formData.append("name", reporter);
-    formData.append("device", equipment);
-
-    if (userId) {
-      formData.append("userId", userId);
-    }
-
-    if (photoInput && photoInput.files[0]) {
-      formData.append("photo", photoInput.files[0]);
-    }
+    // 使用 URLSearchParams 打包，確保後端能 100% 解析成 req.body
+    const params = new URLSearchParams();
+    params.append("reporter", reporter);
+    params.append("equipment", equipment);
+    params.append("name", reporter);
+    params.append("device", equipment);
+    params.append("priority", priority);
+    params.append("description", description);
+    params.append("userId", finalUserId);
 
     try {
       const response = await fetch("/api/repairs", {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
       });
 
       const result = await response.json();
