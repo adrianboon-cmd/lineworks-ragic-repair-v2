@@ -68,15 +68,54 @@ async function getAccessToken() {
   return data.access_token;
 }
 
+// 💡 處理 LINE WORKS Webhook (使用者進入聊天室或發送訊息時自動觸發按鈕)
+app.post("/callback", async (req, res) => {
+  res.status(200).send("OK");
+
+  try {
+    const { type, source } = req.body;
+    if (source && source.userId) {
+      const userId = source.userId;
+      const botId = process.env.LW_BOT_ID || "13282881";
+      const accessToken = await getAccessToken();
+
+      // 自動產生帶有個人身分 ID 的報修網址
+      const repairUrl = `https://lineworks-ragic-repair-v2.onrender.com?userId=${userId}`;
+
+      // 無論是剛進入聊天室或傳送訊息，都自動推播報修按鈕
+      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content: {
+            type: "button_template",
+            contentText: "🛠️ 歡迎使用設備報修系統\n請點擊下方按鈕開始填寫報修單：",
+            actions: [
+              {
+                type: "uri",
+                label: "🔧 點我填寫報修單",
+                uri: repairUrl
+              }
+            ]
+          }
+        })
+      });
+    }
+  } catch (err) {
+    console.error("Callback 處理失敗:", err);
+  }
+});
+
 // 💡 POST 報修 API
 app.post("/api/repairs", async (req, res) => {
   try {
     console.log("收到報修請求，req.body:", req.body);
 
-    // 1. 寫入 Ragic 並取得結果
     const result = await ragicService.createRepair(req);
 
-    // 2. 抓取解析後的欄位
     const { name, reporter, device, equipment, description, userId } = req.body;
     const finalUserId = userId || req.body.user_id;
     const displayName = reporter || name || "未提供";
@@ -85,7 +124,6 @@ app.post("/api/repairs", async (req, res) => {
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
-    // 3. 發送 Bot 對話框訊息
     if (finalUserId) {
       console.log(`準備發送 Bot 訊息給用戶: ${finalUserId}`);
       const accessToken = await getAccessToken();
@@ -126,7 +164,7 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("❌ 依然未接收到 userId");
+      console.log("❌ 未接收到 userId");
     }
 
     res.json({
@@ -139,44 +177,6 @@ app.post("/api/repairs", async (req, res) => {
       success: false,
       message: error.message || "建立報修單時發生伺服器錯誤"
     });
-  }
-});
-
-// 💡 Persistent Menu 修正為 LINE WORKS 官方標準支援的 HTTP URI 格式
-app.get("/setup-menu", async (req, res) => {
-  const botId = process.env.LW_BOT_ID || "13282881";
-
-  try {
-    const accessToken = await getAccessToken();
-
-    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        content: {
-          actions: [
-            {
-              type: "uri",
-              label: "🔧 我要報修",
-              uri: "https://lineworks-ragic-repair-v2.onrender.com?userId={user_id}"
-            }
-          ]
-        }
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      res.send("<h1>🎉 Persistent Menu (常駐選單) 修復成功！</h1><p>請重新開啟 LINE WORKS App 進行測試。</p>");
-    } else {
-      res.status(400).json({ error: "選單設定失敗", details: data });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 
