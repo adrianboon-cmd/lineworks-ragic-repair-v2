@@ -68,7 +68,7 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// 💡 處理 LINE WORKS Webhook
+// 💡 處理 LINE WORKS Webhook (發送純文字訊息，100% 避開按鈕攔截)
 app.post("/callback", async (req, res) => {
   res.status(200).send("OK");
 
@@ -79,7 +79,7 @@ app.post("/callback", async (req, res) => {
       const botId = process.env.LW_BOT_ID || "13282881";
       const accessToken = await getAccessToken();
 
-      // 發送帶有用戶身分 ID 的報修單卡片按鈕
+      // 純文字訊息超連結，繞過 button_template 的系統封鎖
       await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
         method: "POST",
         headers: {
@@ -88,15 +88,8 @@ app.post("/callback", async (req, res) => {
         },
         body: JSON.stringify({
           content: {
-            type: "button_template",
-            contentText: "🛠️️ 歡迎使用設備報修系統\n請點擊下方按鈕開始填寫報修單：",
-actions: [
-  {
-    type: "uri",
-    label: "🔍 測試開啟 Google",
-    uri: "https://www.google.com"
-  }
-]
+            type: "text",
+            text: `🛠️ 歡迎使用設備報修系統！\n\n請點擊下方連結開始填寫報修單：\nhttps://lineworks-ragic-repair-v2.onrender.com?userId=${userId}`
           }
         })
       });
