@@ -1,6 +1,5 @@
 const express = require("express");
 const path = require("path");
-const crypto = require("crypto");
 const ragicService = require("./src/ragic");
 
 const app = express();
@@ -9,66 +8,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
-
-// Base64URL 編碼
-function base64url(source) {
-    let encoded = Buffer.from(source).toString("base64");
-    return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
-// 取得 LINE WORKS Access Token (正確的 Service Account JWT 格式)
-async function getAccessToken() {
-    const clientId = process.env.LW_CLIENT_ID;
-    const clientSecret = process.env.LW_CLIENT_SECRET;
-    const serviceAccount = process.env.LW_SERVICE_ACCOUNT;
-    const privateKey = process.env.LW_PRIVATE_KEY;
-
-    if (!clientId || !serviceAccount || !privateKey) {
-        throw new Error("缺少必要的 LINE WORKS 環境變數");
-    }
-
-    const formattedPrivateKey = privateKey.replace(/\\n/g, "\n");
-    const issuedAt = Math.floor(Date.now() / 1000);
-    const expiration = issuedAt + 3600;
-
-    const header = { alg: "RS256", typ: "JWT" };
-    const payload = {
-        iss: clientId,
-        sub: serviceAccount,
-        iat: issuedAt,
-        exp: expiration
-    };
-
-    const encodedHeader = base64url(JSON.stringify(header));
-    const encodedPayload = base64url(JSON.stringify(payload));
-    const signatureInput = `${encodedHeader}.${encodedPayload}`;
-
-    const sign = crypto.createSign("RSA-SHA256");
-    sign.update(signatureInput);
-    sign.end();
-    const signature = base64url(sign.sign(formattedPrivateKey));
-
-    const jwt = `${signatureInput}.${signature}`;
-
-    // 依照 LINE WORKS Server API 規範，使用正確的 body 參數與 content-type
-    const params = new URLSearchParams();
-    params.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
-    params.append("assertion", jwt);
-    params.append("client_id", clientId);
-    params.append("client_secret", clientSecret);
-
-    const response = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString()
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(`Token 取得失敗: ${JSON.stringify(data)}`);
-    }
-    return data.access_token;
-}
 
 // 接收 LINE WORKS Bot 訊息的 Webhook
 app.post("/webhook", async (req, res) => {
@@ -84,13 +23,33 @@ app.post("/webhook", async (req, res) => {
 // 設定 LINE WORKS Persistent Menu 的路由
 app.get("/api/setup-menu", async (req, res) => {
     try {
-        const token = await getAccessToken();
         const botId = process.env.BOT_ID || "13282881";
+        const botSecret = process.env.BOT_SECRET;
 
-        const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
+        if (!botSecret) {
+            throw new Error("缺少 BOT_SECRET 環境變數");
+        }
+
+        // 1. 透過 Bot Secret 取得 Bot 專屬 Access Token (完全不需 JWT 與 scope)
+        const tokenResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/token`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "consumerKey": botSecret
+            }
+        });
+
+        const tokenData = await tokenResponse.json();
+        if (!tokenResponse.ok) {
+            throw new Error(`取得 Bot Token 失敗: ${JSON.stringify(tokenData)}`);
+        }
+        const accessToken = tokenData.token;
+
+        // 2. 設定常駐選單
+        const menuResponse = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
@@ -106,7 +65,7 @@ app.get("/api/setup-menu", async (req, res) => {
             })
         });
 
-        const resText = await response.text();
+        const resText = await menuResponse.text();
         let resData;
         try {
             resData = JSON.parse(resText);
@@ -114,7 +73,7 @@ app.get("/api/setup-menu", async (req, res) => {
             resData = { raw: resText };
         }
 
-        if (!response.ok) {
+        if (!menuResponse.ok) {
             throw new Error(`設定選單失敗: ${resText}`);
         }
 
@@ -126,5 +85,5 @@ app.get("/api/setup-menu", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`伺服器正在 Port ${PORT} บน執行`);
+    console.log(`伺服器正在 Port ${PORT} 上執行`);
 });
