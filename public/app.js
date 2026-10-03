@@ -1,6 +1,6 @@
 let currentUserId = "";
 
-// 1. 初始化 WOFF 並取得目前使用者的 profile (userId)
+// 1. 初始化 WOFF 取得 profile (userId)
 if (typeof woff !== "undefined") {
   woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
     .then(() => {
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const priority = document.getElementById("priority")?.value || "";
     const description = document.getElementById("description")?.value || "";
 
-    // 使用 URLSearchParams 打包，確保後端能 100% 解析成 req.body
+    // 使用 URLSearchParams 打包，確保 Express 內建解析器 100% 讀得到
     const params = new URLSearchParams();
     params.append("reporter", reporter);
     params.append("equipment", equipment);
