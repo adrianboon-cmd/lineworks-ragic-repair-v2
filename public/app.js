@@ -22,6 +22,7 @@ if (typeof woff !== "undefined") {
 document.addEventListener("DOMContentLoaded", () => {
     const repairForm = document.getElementById("repairForm");
     const submitBtn = document.getElementById("submitBtn");
+    
     if (!repairForm) return;
 
     repairForm.addEventListener("submit", async (e) => {
@@ -33,11 +34,11 @@ document.addEventListener("DOMContentLoaded", () => {
             submitBtn.textContent = "正在送出報修單...";
         }
 
-        // 收集表單各手動輸入欄位的值
+        // 嚴格對應 index.html 裡的欄位 ID
         const formData = {
             reporter: document.getElementById("reporter")?.value || "",
-            equipmentName: document.getElementById("equipmentName")?.value || "",
-            urgency: document.getElementById("urgency")?.value || "一般",
+            equipmentName: document.getElementById("equipment")?.value || "", // 對應 index.html 的 id="equipment"
+            urgency: document.getElementById("priority")?.value || "一般",     // 對應 index.html 的 id="priority"
             description: document.getElementById("description")?.value || "",
             userId: currentUserId
         };
