@@ -76,19 +76,18 @@ app.post("/api/repairs", async (req, res) => {
     // 1. 寫入 Ragic 並取得結果 (包含圖片 URL 與案件資料)
     const result = await ragicService.createRepair(req);
 
-    // 取得表單欄位與 Ragic 回傳的圖片網址
+    // 2. 取得表單欄位與 Ragic 回傳的圖片網址
     const { name, device, description, userId } = req.body;
-    const imageUrl = result.imageUrl || result.pictureUrl; // 依 Ragic 回傳的圖片欄位名稱調整
+    const imageUrl = result.imageUrl || result.pictureUrl; 
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
-    // 2. 如果有 userId 或指定接收者，自動發送對話框紀錄
-    if (userId || process.env.LW_TARGET_USER_ID) {
-      const targetUserId = userId || process.env.LW_TARGET_USER_ID;
+    // 3. 若前端有傳遞動態 userId，發送個人化報修紀錄訊息給該使用者
+    if (userId) {
       const accessToken = await getAccessToken(); // 自動簽署取得 Token
 
       // (A) 發送文字摘要
-      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${targetUserId}/messages`, {
+      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -104,7 +103,7 @@ app.post("/api/repairs", async (req, res) => {
 
       // (B) 若有照片，接著發送圖片訊息
       if (imageUrl) {
-        await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${targetUserId}/messages`, {
+        await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${accessToken}`,
@@ -119,6 +118,8 @@ app.post("/api/repairs", async (req, res) => {
           })
         });
       }
+    } else {
+      console.log("未接收到 userId，跳過 Bot 聊天室訊息發送");
     }
 
     res.json({
