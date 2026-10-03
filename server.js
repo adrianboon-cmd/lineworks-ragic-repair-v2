@@ -173,3 +173,25 @@ app.post("/api/repairs", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+// 💡 強制刪除壞掉的 Persistent Menu (常駐選單)
+app.get("/delete-menu", async (req, res) => {
+  const botId = process.env.LW_BOT_ID || "13282881";
+  try {
+    const accessToken = await getAccessToken();
+    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+
+    if (response.ok || response.status === 204) {
+      res.send("<h1>🎉 已成功刪除壞掉的常駐選單！</h1><p>請完全重啟 LINE WORKS App 後再次測試。</p>");
+    } else {
+      const data = await response.json();
+      res.status(400).json({ error: "刪除失敗", details: data });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
