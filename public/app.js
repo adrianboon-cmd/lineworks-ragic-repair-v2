@@ -1,23 +1,26 @@
 let currentUserId = "";
 
-// 1. 初始化 WOFF 並取得目前使用者的 profile (userId)
-if (typeof woff !== "undefined") {
-  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
-    .then(() => {
-      if (woff.isLoggedIn && woff.isLoggedIn()) {
+// 初始化 WOFF
+function initWOFF() {
+  if (typeof woff !== "undefined" && woff.init) {
+    woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
+      .then(() => {
         return woff.getProfile();
-      } else if (woff.getProfile) {
-        return woff.getProfile();
-      }
-    })
-    .then((profile) => {
-      if (profile && profile.userId) {
-        currentUserId = profile.userId;
-        console.log("成功取得 LINE WORKS UserId:", currentUserId);
-      }
-    })
-    .catch((err) => console.error("WOFF 取得 Profile 失敗:", err));
+      })
+      .then((profile) => {
+        if (profile && profile.userId) {
+          currentUserId = profile.userId;
+          console.log("✅ 成功取得 LINE WORKS UserId:", currentUserId);
+        }
+      })
+      .catch((err) => {
+        console.warn("⚠️ WOFF 初始化或取得 Profile 失敗 (可能於外部瀏覽器開啟):", err);
+      });
+  }
 }
+
+// 網頁載入時立刻初始化
+initWOFF();
 
 document.addEventListener("DOMContentLoaded", () => {
   const repairForm = document.getElementById("repairForm");
@@ -31,6 +34,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = "正在送出報修單...";
+
+    // 送出前，若 currentUserId 仍為空，做最後一次嘗試獲取
+    if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
+      try {
+        const profile = await woff.getProfile();
+        if (profile && profile.userId) {
+          currentUserId = profile.userId;
+        }
+      } catch (err) {
+        console.warn("無法取得 Profile:", err);
+      }
+    }
 
     const formData = new FormData();
     
@@ -50,9 +65,12 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("name", reporter);
     formData.append("device", equipment);
 
-    // 💡 關鍵：明確帶入 userId
+    // 帶入取得的 userId
     if (currentUserId) {
       formData.append("userId", currentUserId);
+      console.log("送出報修，夾帶 userId:", currentUserId);
+    } else {
+      console.warn("送出報修，但未能取得 userId");
     }
 
     if (photoInput && photoInput.files[0]) {
