@@ -5,7 +5,6 @@ const fetch = require("node-fetch");
  * @param {Object} data - 前端傳來的表單資料
  */
 async function createRepairRecord(data) {
-    // 讀取原本在 Render 設定好的 RAGIC_BASE_URL
     const ragicApiUrl = process.env.RAGIC_BASE_URL || process.env.RAGIC_API_URL;
     const ragicApiKey = process.env.RAGIC_API_KEY;
 
@@ -13,10 +12,11 @@ async function createRepairRecord(data) {
         throw new Error("缺少 RAGIC_BASE_URL 環境變數");
     }
 
-    // 組織要寫入 Ragic 的資料格式
+    // 組織要寫入 Ragic 的資料格式（確保對應前端傳來的欄位）
     const payload = {
         "填報人": data.reporter || "",
         "設備名稱": data.equipmentName || "",
+        "緊急程度": data.urgency || "",
         "故障描述": data.description || "",
         "照片": data.photoUrl || ""
     };
@@ -33,6 +33,7 @@ async function createRepairRecord(data) {
     });
 
     const result = await response.json();
+    console.log("Ragic API 回應結果:", result);
 
     if (!response.ok) {
         throw new Error(`Ragic 寫入失敗: ${JSON.stringify(result)}`);
