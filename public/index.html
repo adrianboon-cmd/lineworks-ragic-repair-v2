@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>設備報修系統</title>
   <link rel="stylesheet" href="style.css">
+  
+  <!-- 💡 關鍵：載入 LINE WORKS WOFF SDK -->
+  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js"></script>
 </head>
 <body>
   <div class="container">
     <h1 class="header-title">🔧 設備報修系統</h1>
     <p class="header-subtitle">LINE WORKS × Ragic 報修平台</p>
 
-    <!-- 直接顯示報修表單區塊 -->
+    <!-- 報修表單區塊 -->
     <form id="repairForm" enctype="multipart/form-data">
       <h2>🛠️ LINE WORKS 設備報修</h2>
       <p class="subtitle">請填寫故障狀況並上傳照片，系統將自動建立 Ragic 報修單。</p>
@@ -50,6 +53,6 @@
     </form>
   </div>
 
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
