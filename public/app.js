@@ -2,10 +2,9 @@ let currentUserId = "";
 
 // 1. 初始化 WOFF 並取得目前使用者的 profile (userId)
 if (typeof woff !== "undefined") {
-  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" }) // 您的 WOFF ID
+  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
     .then(() => {
-      // 外部瀏覽器開啟時若未登入，會自動引導登入
-      if (!woff.isLoggedIn && woff.isLoggedIn()) {
+      if (woff.isLoggedIn && woff.isLoggedIn()) {
         return woff.getProfile();
       } else if (woff.getProfile) {
         return woff.getProfile();
@@ -33,11 +32,31 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.disabled = true;
     submitBtn.textContent = "正在送出報修單...";
 
-    const formData = new FormData(repairForm);
+    const formData = new FormData();
+    
+    // 取得 HTML 欄位值並統一對齊後端名稱
+    const reporter = document.getElementById("reporter")?.value || "";
+    const equipment = document.getElementById("equipment")?.value || "";
+    const priority = document.getElementById("priority")?.value || "";
+    const description = document.getElementById("description")?.value || "";
+    const photoInput = document.getElementById("photo");
 
-    // 💡 動態將目前開啟表單使用者的 userId 帶入表單資料中
+    formData.append("reporter", reporter);
+    formData.append("equipment", equipment);
+    formData.append("priority", priority);
+    formData.append("description", description);
+    
+    // 同時帶入 name / device 避免後端欄位解析落差
+    formData.append("name", reporter);
+    formData.append("device", equipment);
+
+    // 💡 關鍵：明確帶入 userId
     if (currentUserId) {
       formData.append("userId", currentUserId);
+    }
+
+    if (photoInput && photoInput.files[0]) {
+      formData.append("photo", photoInput.files[0]);
     }
 
     try {
@@ -49,10 +68,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert(`🎉 報修案件建立成功！案件單號：${result.repairId}`);
+        alert(`🎉 報修案件建立成功！案件單號：${result.repairId || result.id}`);
         repairForm.reset();
 
-        // 送出成功後自動關閉 WOFF 視窗
+        // 自動關閉 WOFF 視窗
         if (typeof woff !== "undefined" && woff.closeWindow) {
           woff.closeWindow();
         }
