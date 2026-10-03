@@ -21,23 +21,20 @@ async function createRepairWithPhoto(req) {
         return reject(new Error("填報人、設備名稱、故障描述與緊急程度皆為必填！"));
       }
 
-      // 1. 取得 Ragic 原始 API Key 並去除前後空白
+      // 1. 取得 Ragic 原始 API Key (去除前後空白)
       let rawApiKey =
-        process.env.RAGIC_API_KEY ||dzUyaTY5S3ZGWWZOd1lFaklIVnRnOWIraUowS2tGK1U4TlFRUkR1RXZ0MHJMaUczbkg4cnNTRzV5TjR4bWhnN29xRk44Vzk4Q2ZNPQ
+        process.env.RAGIC_API_KEY ||
         (config.ragic && config.ragic.apiKey) ||
         config.RAGIC_API_KEY ||
         "";
 
-      rawApiKey = rawApiKey.trim();
+      let apiKey = rawApiKey.trim();
 
-      if (!rawApiKey) {
+      if (!apiKey) {
         return reject(new Error("伺服器未設定有效的 RAGIC_API_KEY"));
       }
 
-      // 2. 將 API Key 進行標準 Basic Auth Base64 編碼 (格式為 API_KEY:)
-      const authHeader = `Basic ${Buffer.from(rawApiKey + ":").toString("base64")}`;
-
-      // 3. 取得 Ragic 表單 URL
+      // 2. 取得 Target URL
       let targetUrl =
         process.env.RAGIC_FORM_URL ||
         process.env.RAGIC_BASE_URL ||
@@ -48,16 +45,15 @@ async function createRepairWithPhoto(req) {
         targetUrl = `https://${targetUrl}`;
       }
 
+      // 3. 建立 FormData 並填入資料
       const ragicFormData = new FormData();
-
-      // 4. 帶入 Ragic 欄位資料
       ragicFormData.append("1054240", reporter);        // 填報人
       ragicFormData.append("1054241", equipment);       // 設備名稱
       ragicFormData.append("1054242", description);     // 故障描述
       ragicFormData.append("1054336", priority);        // 緊急程度
       ragicFormData.append("1054237", "待處理");       // 案件狀態
 
-      // 5. 帶入照片 (欄位 ID: 1054243)
+      // 帶入照片 (欄位 ID: 1054243)
       if (photoFile && photoFile.size > 0) {
         try {
           const fileStream = fs.createReadStream(photoFile.filepath);
@@ -71,16 +67,15 @@ async function createRepairWithPhoto(req) {
         }
       }
 
-      try {
-        console.log(`正在發送請求至 Ragic: ${targetUrl}?api`);
+      // 4. 組裝網址 (將 API Key 直接帶在網址上)
+      const targetUrlWithKey = `${targetUrl}?api&api_key=${encodeURIComponent(apiKey)}`;
 
-        // 6. 發送包含 Authorization Header 的 POST 請求
-        const response = await fetch(`${targetUrl}?api`, {
+      try {
+        console.log(`正在發送請求至 Ragic...`);
+
+        const response = await fetch(targetUrlWithKey, {
           method: "POST",
-          headers: {
-            Authorization: authHeader,
-            ...ragicFormData.getHeaders()
-          },
+          headers: ragicFormData.getHeaders(),
           body: ragicFormData
         });
 
