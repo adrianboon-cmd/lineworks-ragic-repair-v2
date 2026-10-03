@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken"); // 確保 package.json 有安裝 jsonwebtoken
+const axios = require("axios"); // 加上這行
 const ragicService = require("./src/ragic.js");
 
 const app = express();
