@@ -62,17 +62,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const result = await response.json();
-
-      if (response.ok && result.success) {
-        alert(`🎉 報修案件建立成功！案件單號：${result.repairId || result.id}`);
-        repairForm.reset();
-
-        if (typeof woff !== "undefined" && woff.closeWindow) {
-          woff.closeWindow();
-        }
-      } else {
-        alert(`❌ 建立失敗：${result.message || result.error || "未知錯誤"}`);
-      }
+// 在成功回傳區塊 (例如 res.json() 後)
+if (result.success) {
+  alert(`✅ 報修單已成功送出！\n\n您的案件編號為：${result.caseNumber}`);
+  window.location.reload();
+} else {
+  alert(`❌ 送出失敗：${result.message}`);
+}
     } catch (err) {
       console.error("提交錯誤:", err);
       alert("❌ 無法連接伺服器，請稍後再試...");
