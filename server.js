@@ -73,21 +73,27 @@ async function getAccessToken() {
 // POST 報修 API
 app.post("/api/repairs", async (req, res) => {
   try {
+    console.log("收到報修請求，req.body:", req.body);
+
     // 1. 寫入 Ragic 並取得結果 (包含圖片 URL 與案件資料)
     const result = await ragicService.createRepair(req);
 
     // 2. 取得表單欄位與 Ragic 回傳的圖片網址
-    const { name, device, description, userId } = req.body;
+    const { name, reporter, device, equipment, description, userId } = req.body;
+    const finalUserId = userId || req.body.user_id;
+    const displayName = reporter || name || "未提供";
+    const displayDevice = equipment || device || "未提供";
     const imageUrl = result.imageUrl || result.pictureUrl; 
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
     // 3. 若有取得動態 userId，發送個人化報修紀錄訊息給該使用者
-    if (userId) {
+    if (finalUserId) {
+      console.log(`準備發送訊息給用戶: ${finalUserId}`);
       const accessToken = await getAccessToken(); // 自動簽署取得 Token
 
       // (A) 發送文字摘要
-      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
+      const msgRes = await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -96,14 +102,17 @@ app.post("/api/repairs", async (req, res) => {
         body: JSON.stringify({
           content: {
             type: "text",
-            text: `✅ 報修單已成功送出！\n\n📋 報修紀錄摘要：\n• 報修人：${name || "未提供"}\n• 設備名稱：${device || "未提供"}\n• 問題描述：${description || "無"}`
+            text: `✅ 報修單已成功送出！\n\n📋 報修紀錄摘要：\n• 報修人：${displayName}\n• 設備名稱：${displayDevice}\n• 問題描述：${description || "無"}`
           }
         })
       });
 
+      const msgData = await msgRes.json();
+      console.log("文字訊息發送結果:", msgData);
+
       // (B) 若有照片，接著發送圖片訊息
       if (imageUrl) {
-        await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${userId}/messages`, {
+        await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${accessToken}`,
@@ -119,7 +128,7 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("未接收到 userId，跳過 Bot 聊天室訊息發送");
+      console.log("❌ 未接收到 userId，跳過 Bot 聊天室訊息發送");
     }
 
     res.json({
@@ -135,15 +144,14 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 一鍵自動發行 Token + 設定 Persistent Menu API (帶入 user_id 關鍵修復)
+// 💡 一鍵自動發行 Token + 設定 Persistent Menu API (使用 WOFF URL Scheme)
 app.get("/setup-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
 
   try {
-    // 1. 自動簽署 JWT 取得最新 Access Token
     const accessToken = await getAccessToken();
 
-    // 2. 呼叫 LINE WORKS 設定常駐選單，網址帶入 {user_id} 變數
+    // 使用 LINE WORKS 官方的 WOFF Scheme，會強制原生的 WOFF 容器帶入使用者身分
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "POST",
       headers: {
@@ -156,7 +164,7 @@ app.get("/setup-menu", async (req, res) => {
             {
               type: "uri",
               label: "🔧 我要報修",
-              uri: "https://lineworks-ragic-repair-v2.onrender.com?userId={user_id}"
+              uri: "https://line.worksmobile.com/woff/v1/app/WiPs90_DcB_oVcPYkXSOrg?userId={user_id}"
             }
           ]
         }
@@ -166,7 +174,7 @@ app.get("/setup-menu", async (req, res) => {
     const data = await response.json();
 
     if (response.ok) {
-      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>請重新開啟 LINE WORKS App 進行測試。</p>");
+      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>已設定 WOFF Scheme 選單，請重新開啟 LINE WORKS App 進行測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
     }
