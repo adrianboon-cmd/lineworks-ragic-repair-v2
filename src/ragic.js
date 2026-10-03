@@ -8,16 +8,16 @@ async function createRepairRecord(data) {
         throw new Error("缺少 Ragic API 網址環境變數");
     }
 
-    // 這裡的 Key 需要完全對應 Ragic 欄位（如果是欄位代號，請改成如 field_1 這種格式）
+    // 使用 Render 環境變數中設定的 Ragic Field ID 作為 Key
     const payload = {
-        "填報人": data.reporter || "",
-        "設備名稱": data.equipmentName || "",
-        "緊急程度": data.urgency || "",
-        "故障描述": data.description || "",
-        "照片": data.photoUrl || ""
+        [process.env.RAGIC_FIELD_REPORTER || "1054240"]: data.reporter || "",
+        [process.env.RAGIC_FIELD_EQUIPMENT || "1054241"]: data.equipmentName || "",
+        [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
+        [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
+        [process.env.RAGIC_FIELD_PHOTO || "1054243"]: data.photoUrl || ""
     };
 
-    console.log("正在發送 Payload 至 Ragic:", payload);
+    console.log("正在發送帶有 Field ID 的 Payload 至 Ragic:", payload);
 
     const response = await fetch(ragicApiUrl, {
         method: "POST",
