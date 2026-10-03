@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
 const ragicService = require("./src/ragic");
 
 const app = express();
@@ -8,6 +9,66 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+
+// Base64URL 編碼輔助函式
+function base64url(source) {
+  let encoded = Buffer.from(source).toString("base64");
+  return encoded.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+// 💡 透過 Private Key 自動產生 JWT 並取得 Access Token
+async function getAccessToken() {
+  const clientId = process.env.LW_CLIENT_ID;
+  const serviceAccount = process.env.LW_SERVICE_ACCOUNT;
+  let privateKey = process.env.LW_PRIVATE_KEY;
+
+  if (!clientId || !serviceAccount || !privateKey) {
+    throw new Error("缺少必要的環境變數 (LW_CLIENT_ID, LW_SERVICE_ACCOUNT, LW_PRIVATE_KEY)");
+  }
+
+  // 處理 Private Key 換行符號
+  privateKey = privateKey.replace(/\\n/g, "\n");
+
+  const header = { alg: "RS256", typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: clientId,
+    sub: serviceAccount,
+    iat: now,
+    exp: now + 3600
+  };
+
+  const encodedHeader = base64url(JSON.stringify(header));
+  const encodedPayload = base64url(JSON.stringify(payload));
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(unsignedToken);
+  const signature = signer.sign(privateKey, "base64")
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+  const jwt = `${unsignedToken}.${signature}`;
+
+  // 向 LINE WORKS 請求 Access Token
+  const params = new URLSearchParams();
+  params.append("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
+  params.append("client_id", clientId);
+  params.append("client_secret", process.env.LW_CLIENT_SECRET || "");
+  params.append("assertion", jwt);
+  params.append("scope", "bot.message");
+
+  const res = await fetch("https://auth.worksmobile.com/oauth2/v2.0/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString()
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`取得 Access Token 失敗: ${JSON.stringify(data)}`);
+  }
+  return data.access_token;
+}
 
 // POST 報修 API
 app.post("/api/repairs", async (req, res) => {
@@ -26,18 +87,15 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 自動設定 Persistent Menu (常駐選單) API
+// 💡 一鍵自動發行 Token + 設定 Persistent Menu API
 app.get("/setup-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
-  const accessToken = process.env.LW_ACCESS_TOKEN;
-
-  if (!accessToken) {
-    return res.status(400).json({ 
-      error: "請先在 Render 環境變數 (Environment) 設定 LW_ACCESS_TOKEN" 
-    });
-  }
 
   try {
+    // 1. 自動簽署 JWT 取得最新 Access Token
+    const accessToken = await getAccessToken();
+
+    // 2. 呼叫 LINE WORKS 設定常駐選單
     const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botId}/persistentmenu`, {
       method: "POST",
       headers: {
@@ -62,7 +120,7 @@ app.get("/setup-menu", async (req, res) => {
     if (response.ok) {
       res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
     } else {
-      res.status(400).json({ error: "設定失敗", details: data });
+      res.status(400).json({ error: "選單設定失敗", details: data });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
