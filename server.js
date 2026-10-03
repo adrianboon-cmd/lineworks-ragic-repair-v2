@@ -73,7 +73,54 @@ async function getAccessToken() {
 // POST 報修 API
 app.post("/api/repairs", async (req, res) => {
   try {
+    // 1. 寫入 Ragic 並取得結果 (包含圖片 URL 與案件資料)
     const result = await ragicService.createRepair(req);
+
+    // 取得表單欄位與 Ragic 回傳的圖片網址
+    const { name, device, description, userId } = req.body;
+    const imageUrl = result.imageUrl || result.pictureUrl; // 依 Ragic 回傳的圖片欄位名稱調整
+
+    const botId = process.env.LW_BOT_ID || "13282881";
+
+    // 2. 如果有 userId 或指定接收者，自動發送對話框紀錄
+    if (userId || process.env.LW_TARGET_USER_ID) {
+      const targetUserId = userId || process.env.LW_TARGET_USER_ID;
+      const accessToken = await getAccessToken(); // 使用剛才寫好的 JWT 自動簽署取得 Token
+
+      // (A) 發送文字摘要
+      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${targetUserId}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content: {
+            type: "text",
+            text: `✅ 報修單已成功送出！\n\n📋 報修紀錄摘要：\n• 報修人：${name || "未提供"}\n• 設備名稱：${device || "未提供"}\n• 問題描述：${description || "無"}`
+          }
+        })
+      });
+
+      // (B) 若有照片，接著發送圖片訊息
+      if (imageUrl) {
+        await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${targetUserId}/messages`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            content: {
+              type: "image",
+              originalContentUrl: imageUrl,
+              previewImageUrl: imageUrl
+            }
+          })
+        });
+      }
+    }
+
     res.json({
       success: true,
       repairId: result.repairId || result.id
@@ -117,7 +164,7 @@ app.get("/setup-menu", async (req, res) => {
 
     const data = await response.json();
 
-    if (response.ok) {
+    if (response.ok) {pp.post("/api/repairs"
       res.send("<h1>🎉 Persistent Menu (常駐選單) 設定成功！</h1><p>請打開 LINE WORKS App 測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
