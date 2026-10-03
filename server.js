@@ -76,7 +76,7 @@ async function sendBotMessage(userId, text) {
   }
 }
 
-// 接收前端報修表單 API（真實寫入 Ragic 並支援圖片）
+// 接收前端報修表單 API（使用 Render 上的 Field ID 對應寫入 Ragic）
 app.post("/api/repairs", upload.single('image'), async (req, res) => {
   try {
     console.log("收到前端報修表單資料:", req.body);
@@ -85,23 +85,38 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     const formData = req.body;
     const imageFile = req.file;
 
-    // 準備傳送給 Ragic 的資料
-    const ragicData = {
-      ...formData,
-      // 如果有上傳圖片，轉換為 Ragic 可接收的格式
+    // 讀取 Render 上設定的 Field ID
+    const fieldReporter = process.env.RAGIC_FIELD_REPORTER || "1054240";
+    const fieldEquipment = process.env.RAGIC_FIELD_EQUIPMENT || "1054238"; // 依您的設定調整
+    const fieldUrgency = process.env.RAGIC_FIELD_URGENCY || "1054233";
+    const fieldDescription = process.env.RAGIC_FIELD_DESCRIPTION || "1054236"; // 描述欄位
+    const fieldPhoto = process.env.RAGIC_FIELD_PHOTO || "1054243";
+    const fieldTime = process.env.RAGIC_FIELD_TIME || "1054237";
+
+    // 建立對應 Ragic Field ID 的 Payload
+    const ragicPayload = {
+      [fieldReporter]: formData.reporter || "",
+      [fieldEquipment]: formData.equipmentName || "",
+      [fieldUrgency]: formData.urgency || "",
+      [fieldDescription]: formData.description || "",
+      [fieldTime]: formData.repairTime || "",
       ...(imageFile && {
-        image: {
+        [fieldPhoto]: {
           value: imageFile.buffer.toString('base64'),
           name: imageFile.originalname
         }
       })
     };
 
-    // 呼叫真實的 Ragic API 寫入資料
-    const ragicApiKey = process.env.RAGIC_API_KEY; 
+    console.log("準備送到 Ragic 的 Payload:", ragicPayload);
+
+    // 呼叫 Ragic API
+    const ragicFormUrl = process.env.RAGIC_FORM_URL || "https://ap3.ragic.com/fujifilmDemo/line-works/1";
+    const ragicApiKey = process.env.RAGIC_API_KEY;
+
     const ragicResponse = await axios.post(
-      "https://ap3.ragic.com/fujifilmDemo/line-works/1?api&v=3", 
-      ragicData,
+      `${ragicFormUrl}?api&v=3`, 
+      ragicPayload,
       {
         headers: {
           ...(ragicApiKey && { 'Authorization': `Basic ${Buffer.from(ragicApiKey + ':').toString('base64')}` }),
@@ -112,8 +127,17 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
 
     console.log("Ragic 回應結果:", ragicResponse.data);
 
-    // 取得 Ragic 實際產生的案件編號（如果有的話）
-    const repairNo = ragicResponse.data.rowId || ragicResponse.data.id || "已成功建立";
+    // 正確取得 Ragic 回傳的流水號或 rowId 作為案件編號
+    const responseData = ragicResponse.data;
+    let repairNo = "已成功建立";
+    
+    // 通常 Ragic 成功寫入後會回傳包含 rowId 或新增的 key
+    if (typeof responseData === 'object' && responseData !== null) {
+      const keys = Object.keys(responseData);
+      if (keys.length > 0) {
+        repairNo = responseData.rowId || responseData.id || keys[0];
+      }
+    }
 
     // 發送通知給 LINE WORKS 用戶
     if (formData.userId) {
@@ -132,7 +156,7 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     res.status(200).json({
       success: true,
       repairNo: repairNo,
-      message: '報修成功送出並已寫入 Ragic！'
+      message: '報修成功送出並已完整寫入 Ragic！'
     });
 
   } catch (error) {
