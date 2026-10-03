@@ -15,13 +15,16 @@ async function createRepairRecord(data) {
     [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
     [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
     [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || "",
-    // 加上圖片欄位對應（如果有上傳圖片）
+    // 完整的 Ragic 圖片附件上傳格式
     ...(data.photoUrl && {
-      [process.env.RAGIC_FIELD_PHOTO || "1054243"]: data.photoUrl
+      [process.env.RAGIC_FIELD_PHOTO || "1054243"]: {
+        name: data.photoUrl.name,
+        file: data.photoUrl.value
+      }
     })
   };
 
-  console.log("正在發送帶有 Field ID 的 Payload 至 Ragic:", JSON.stringify(payload, null, 2));
+  console.log("正在發送帶有 Field ID 與圖片的 Payload 至 Ragic:", JSON.stringify({ ...payload, [process.env.RAGIC_FIELD_PHOTO || "1054243"]: payload[process.env.RAGIC_FIELD_PHOTO || "1054243"] ? "[Base64 Image Data]" : undefined }, null, 2));
 
   const response = await fetch(ragicApiUrl, {
     method: "POST",
