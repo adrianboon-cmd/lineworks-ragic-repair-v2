@@ -126,7 +126,7 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("❌ 依然未接收到 userId，請確認前端與 WOFF Scheme");
+      console.log("❌ 依然未接收到 userId");
     }
 
     res.json({
@@ -142,7 +142,7 @@ app.post("/api/repairs", async (req, res) => {
   }
 });
 
-// 💡 Persistent Menu 設定
+// 💡 Persistent Menu 修正為 LINE WORKS 官方標準支援的 HTTP URI 格式
 app.get("/setup-menu", async (req, res) => {
   const botId = process.env.LW_BOT_ID || "13282881";
 
@@ -161,7 +161,7 @@ app.get("/setup-menu", async (req, res) => {
             {
               type: "uri",
               label: "🔧 我要報修",
-              uri: "https://line.worksmobile.com/woff/v1/app/WiPs90_DcB_oVcPYkXSOrg?userId={user_id}"
+              uri: "https://lineworks-ragic-repair-v2.onrender.com?userId={user_id}"
             }
           ]
         }
@@ -171,7 +171,7 @@ app.get("/setup-menu", async (req, res) => {
     const data = await response.json();
 
     if (response.ok) {
-      res.send("<h1>🎉 Persistent Menu (常駐選單) 更新成功！</h1><p>請重新開啟 LINE WORKS App 測試。</p>");
+      res.send("<h1>🎉 Persistent Menu (常駐選單) 修復成功！</h1><p>請重新開啟 LINE WORKS App 進行測試。</p>");
     } else {
       res.status(400).json({ error: "選單設定失敗", details: data });
     }
