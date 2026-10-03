@@ -1,18 +1,14 @@
 const fetch = require("node-fetch");
 
-/**
- * 建立報修記錄並寫入 Ragic
- * @param {Object} data - 前端傳來的表單資料
- */
 async function createRepairRecord(data) {
     const ragicApiUrl = process.env.RAGIC_BASE_URL || process.env.RAGIC_API_URL;
     const ragicApiKey = process.env.RAGIC_API_KEY;
 
     if (!ragicApiUrl) {
-        throw new Error("缺少 RAGIC_BASE_URL 環境變數");
+        throw new Error("缺少 Ragic API 網址環境變數");
     }
 
-    // 組織要寫入 Ragic 的資料格式（確保對應前端傳來的欄位）
+    // 這裡的 Key 需要完全對應 Ragic 欄位（如果是欄位代號，請改成如 field_1 這種格式）
     const payload = {
         "填報人": data.reporter || "",
         "設備名稱": data.equipmentName || "",
@@ -21,7 +17,7 @@ async function createRepairRecord(data) {
         "照片": data.photoUrl || ""
     };
 
-    console.log("正在發送請求至 Ragic...", payload);
+    console.log("正在發送 Payload 至 Ragic:", payload);
 
     const response = await fetch(ragicApiUrl, {
         method: "POST",
@@ -33,7 +29,7 @@ async function createRepairRecord(data) {
     });
 
     const result = await response.json();
-    console.log("Ragic API 回應結果:", result);
+    console.log("Ragic 回應結果:", result);
 
     if (!response.ok) {
         throw new Error(`Ragic 寫入失敗: ${JSON.stringify(result)}`);
