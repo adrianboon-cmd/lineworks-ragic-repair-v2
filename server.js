@@ -99,18 +99,20 @@ app.post("/callback", async (req, res) => {
   }
 });
 
-// 💡 POST 報修 API
+// 💡 POST 報修 API (加強 Log 輸出版本)
 app.post("/api/repairs", async (req, res) => {
   try {
     console.log("收到報修請求，req.body:", req.body);
 
+    // 呼叫 Ragic API
     const result = await ragicService.createRepair(req);
+    console.log("Ragic 回傳結果:", result);
 
     const { name, reporter, device, equipment, description, userId } = req.body;
     const finalUserId = userId || req.body.user_id;
     const displayName = reporter || name || "未提供";
     const displayDevice = equipment || device || "未提供";
-    const imageUrl = result.imageUrl || result.pictureUrl; 
+    const imageUrl = result ? (result.imageUrl || result.pictureUrl) : null; 
 
     const botId = process.env.LW_BOT_ID || "13282881";
 
@@ -119,7 +121,7 @@ app.post("/api/repairs", async (req, res) => {
       const accessToken = await getAccessToken();
 
       // (A) 發送文字摘要
-      const msgRes = await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
+      await fetch(`https://www.worksapis.com/v3.0/bots/${botId}/users/${finalUserId}/messages`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -132,9 +134,6 @@ app.post("/api/repairs", async (req, res) => {
           }
         })
       });
-
-      const msgData = await msgRes.json();
-      console.log("文字訊息發送結果:", msgData);
 
       // (B) 若有照片，發送圖片訊息
       if (imageUrl) {
@@ -154,15 +153,15 @@ app.post("/api/repairs", async (req, res) => {
         });
       }
     } else {
-      console.log("❌ 未接收到 userId");
+      console.log("⚠️ 提示：未接收到 userId（如果是直接打開網頁測試屬正常現象）");
     }
 
     res.json({
       success: true,
-      repairId: result.repairId || result.id
+      repairId: result ? (result.repairId || result.id) : null
     });
   } catch (error) {
-    console.error("建立報修單失敗:", error);
+    console.error("❌ 建立 Ragic 報修單失敗，詳細錯誤原因:", error.response ? error.response.data : error.message);
     res.status(500).json({
       success: false,
       message: error.message || "建立報修單時發生伺服器錯誤"
