@@ -1,26 +1,24 @@
-let currentUserId = "";
+// 💡 從 URL Query 參數或 WOFF Profile 中取得 userId (參考 visit-report 機制)
+function getUserId() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let uid = urlParams.get("userId") || urlParams.get("user_id") || urlParams.get("uid");
 
-// 初始化 WOFF
-function initWOFF() {
-  if (typeof woff !== "undefined" && woff.init) {
-    woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
-      .then(() => {
-        return woff.getProfile();
-      })
+  if (!uid && typeof woff !== "undefined" && woff.getProfile) {
+    woff.getProfile()
       .then((profile) => {
         if (profile && profile.userId) {
-          currentUserId = profile.userId;
-          console.log("✅ 成功取得 LINE WORKS UserId:", currentUserId);
+          window.currentUserId = profile.userId;
         }
       })
-      .catch((err) => {
-        console.warn("⚠️ WOFF 初始化或取得 Profile 失敗 (可能於外部瀏覽器開啟):", err);
-      });
+      .catch(() => {});
   }
+  return uid || window.currentUserId || "";
 }
 
-// 網頁載入時立刻初始化
-initWOFF();
+// 網頁載入時初始化 WOFF
+if (typeof woff !== "undefined" && woff.init) {
+  woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" }).catch(() => {});
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const repairForm = document.getElementById("repairForm");
@@ -35,21 +33,19 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.disabled = true;
     submitBtn.textContent = "正在送出報修單...";
 
-    // 送出前，若 currentUserId 仍為空，做最後一次嘗試獲取
-    if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
+    // 1. 取得 userId
+    let userId = getUserId();
+
+    // 如果還是沒抓到，嘗試從 woff 再同步讀一次
+    if (!userId && typeof woff !== "undefined" && woff.getProfile) {
       try {
         const profile = await woff.getProfile();
-        if (profile && profile.userId) {
-          currentUserId = profile.userId;
-        }
-      } catch (err) {
-        console.warn("無法取得 Profile:", err);
-      }
+        if (profile && profile.userId) userId = profile.userId;
+      } catch (err) {}
     }
 
     const formData = new FormData();
     
-    // 取得 HTML 欄位值並統一對齊後端名稱
     const reporter = document.getElementById("reporter")?.value || "";
     const equipment = document.getElementById("equipment")?.value || "";
     const priority = document.getElementById("priority")?.value || "";
@@ -61,16 +57,11 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("priority", priority);
     formData.append("description", description);
     
-    // 同時帶入 name / device 避免後端欄位解析落差
     formData.append("name", reporter);
     formData.append("device", equipment);
 
-    // 帶入取得的 userId
-    if (currentUserId) {
-      formData.append("userId", currentUserId);
-      console.log("送出報修，夾帶 userId:", currentUserId);
-    } else {
-      console.warn("送出報修，但未能取得 userId");
+    if (userId) {
+      formData.append("userId", userId);
     }
 
     if (photoInput && photoInput.files[0]) {
@@ -89,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
         alert(`🎉 報修案件建立成功！案件單號：${result.repairId || result.id}`);
         repairForm.reset();
 
-        // 自動關閉 WOFF 視窗
         if (typeof woff !== "undefined" && woff.closeWindow) {
           woff.closeWindow();
         }
