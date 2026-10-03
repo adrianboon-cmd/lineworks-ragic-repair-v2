@@ -33,7 +33,7 @@ async function getAccessToken() {
     return data.access_token;
 }
 
-async function setBotMenu() {
+async function setPersistentMenu() {
     const accessToken = await getAccessToken();
     if (!accessToken) {
         console.error("❌ 無法取得 Access Token");
@@ -43,21 +43,18 @@ async function setBotMenu() {
     const botNo = process.env.LINE_WORKS_BOT_NO;
     const woffUrl = "https://woff.worksmobile.com/woff/hF-5w0yJz-rK-1MfqDtOeA";
 
-    // LINE WORKS Bot 聊天室選單的標準 JSON 格式
+    // LINE WORKS 官方正確的 Persistent Menu API payload 格式
     const menuPayload = {
-        subTitle: "設備報修",
-        contents: [
-            {
-                action: {
-                    type: "uri",
-                    label: "🔧 設備報修",
-                    uri: woffUrl
-                }
-            }
-        ]
+        name: "設備報修",
+        content: {
+            type: "link",
+            title: "🔧 設備報修",
+            link: woffUrl
+        }
     };
 
-    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botNo}/menu`, {
+    // 正確的 API 路徑是 /persistent-menu
+    const response = await fetch(`https://www.worksapis.com/v1.0/bots/${botNo}/persistent-menu`, {
         method: "PUT",
         headers: {
             "Authorization": `Bearer ${accessToken}`,
@@ -67,11 +64,11 @@ async function setBotMenu() {
     });
 
     if (response.ok) {
-        console.log("✅ 成功設定 Bot 選單！");
+        console.log("✅ 成功建立 Bot 常駐選單 (Persistent Menu)！");
     } else {
         const err = await response.text();
-        console.error("❌ 設定選單失敗:", err);
+        console.error("❌ 建立選單失敗:", err);
     }
 }
 
-setBotMenu();
+setPersistentMenu();
