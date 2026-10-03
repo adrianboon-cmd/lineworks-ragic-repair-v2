@@ -7,12 +7,12 @@ const ragicService = {
       const displayName = reporter || name || "";
       const displayDevice = equipment || device || "";
 
-      // Ragic API 欄位對照（請確認與您的 Ragic 欄位編號一致）
+      // 💡 正確的 Ragic 欄位 ID 對照表
       const ragicData = {
-        "1000123": displayName,     // 報修人 (範例 ID，請依實際調整)
-        "1000124": displayDevice,   // 設備名稱
-        "1000125": priority || "一般", // 緊急程度
-        "1000126": description || ""  // 問題描述
+        "1054240": displayName,           // 報修人
+        "1054241": displayDevice,         // 設備名稱
+        "1054336": priority || "一般",     // 緊急程度
+        "1054242": description || ""      // 問題描述
       };
 
       const apiKey = process.env.RAGIC_API_KEY || config.RAGIC_API_KEY;
@@ -24,7 +24,7 @@ const ragicService = {
 
       console.log(`正在發送 API 請求至 Ragic: ${formUrl}`);
 
-      // 設定 8 秒逾時保護，避免 API 卡死
+      // 設定 8 秒逾時保護
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
