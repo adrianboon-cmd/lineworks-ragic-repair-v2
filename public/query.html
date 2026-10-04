@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 查詢報修案件進度</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>🔍 查詢報修案件進度</h2>
+        
+        <!-- 查詢表單 -->
+        <form id="queryForm">
+            <div class="form-group">
+                <label for="keyword">請輸入填報人姓名或案件編號：</label>
+                <input type="text" id="keyword" required placeholder="例如：98 或 82">
+            </div>
+            <button type="submit" id="searchBtn">開始查詢</button>
+        </form>
+
+        <!-- 查詢結果列表 -->
+        <div id="queryResultContainer" style="margin-top: 20px;">
+            <div id="resultList"></div>
+        </div>
+    </div>
+
+    <script src="query.js"></script>
+</body>
+</html>
