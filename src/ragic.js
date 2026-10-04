@@ -1,4 +1,5 @@
 const fetch = require("node-fetch");
+const FormData = require("form-data");
 
 async function createRepairRecord(data) {
   const ragicApiUrl = process.env.RAGIC_BASE_URL || process.env.RAGIC_API_URL;
@@ -8,38 +9,42 @@ async function createRepairRecord(data) {
     throw new Error("缺少 Ragic API 網址環境變數");
   }
 
-  // 建立對應 Ragic 各欄位的 Payload
-  const payload = {
-    [process.env.RAGIC_FIELD_REPORTER || "1054240"]: data.reporter || "",
-    [process.env.RAGIC_FIELD_EQUIPMENT || "1054238"]: data.equipmentName || "",
-    [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
-    [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
-    [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || ""
-  };
+  // 使用 Ragic 標準的 multipart/form-data 格式
+  const form = new FormData();
+  
+  // 填入一般文字欄位
+  form.append(process.env.RAGIC_FIELD_REPORTER || "1054240", data.reporter || "");
+  form.append(process.env.RAGIC_FIELD_EQUIPMENT || "1054238", data.equipmentName || "");
+  form.append(process.env.RAGIC_FIELD_PRIORITY || "1054336", data.urgency || "一般");
+  form.append(process.env.RAGIC_FIELD_DESCRIPTION || "1054242", data.description || "");
+  form.append(process.env.RAGIC_FIELD_TIME || "1054239", data.repairTime || "");
 
-  // 處理圖片上傳欄位 (1054243)
+  // 如果有圖片，將 Base64 轉回 Buffer，並以檔案串流形式加入 FormData
   if (data.imageBase64) {
-    let cleanBase64 = data.imageBase64;
-    if (cleanBase64.includes(',')) {
-      cleanBase64 = cleanBase64.split(',')[1];
+    let base64Data = data.imageBase64;
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
     }
+    
+    const buffer = Buffer.from(base64Data, 'base64');
+    const filename = data.imageName || "repair_photo.jpg";
 
-    // Ragic 官方 API 針對檔案/圖片上傳欄位的標準格式：物件包含 name 與 file
-    payload["1054243"] = {
-      name: data.imageName || "repair_photo.jpg",
-      file: cleanBase64
-    };
+    // 將檔案附加到 Ragic 圖片欄位 1054243
+    form.append("1054243", buffer, {
+      filename: filename,
+      contentType: 'image/jpeg'
+    });
   }
 
-  console.log("正在發送包含圖片的 Payload 至 Ragic...");
+  console.log("正在以 multipart/form-data 方式發送資料至 Ragic...");
 
   const response = await fetch(ragicApiUrl, {
     method: "POST",
     headers: {
       ...(ragicApiKey && { 'Authorization': `Basic ${Buffer.from(ragicApiKey + ':').toString('base64')}` }),
-      "Content-Type": "application/json"
+      ...form.getHeaders() // 自動帶入 multipart 必要的 headers
     },
-    body: JSON.stringify(payload)
+    body: form
   });
 
   const result = await response.json();
