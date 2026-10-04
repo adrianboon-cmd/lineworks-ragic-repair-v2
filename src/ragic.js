@@ -9,17 +9,16 @@ async function createRepairRecord(data) {
     throw new Error("缺少 Ragic API 網址環境變數");
   }
 
-  // 使用 FormData 來處理文字與二進位檔案上傳
+  // 使用 FormData 包裝文字與檔案，符合 Ragic 附件上傳需求
   const form = new FormData();
 
-  // 加入各個欄位
   form.append(process.env.RAGIC_FIELD_REPORTER || "1054240", data.reporter || "");
   form.append(process.env.RAGIC_FIELD_EQUIPMENT || "1054238", data.equipmentName || "");
   form.append(process.env.RAGIC_FIELD_PRIORITY || "1054336", data.urgency || "一般");
   form.append(process.env.RAGIC_FIELD_DESCRIPTION || "1054242", data.description || "");
   form.append(process.env.RAGIC_FIELD_TIME || "1054239", data.repairTime || "");
 
-  // 如果有上傳圖片，將 Buffer 直接附加到 FormData 中
+  // 檢查並附加圖片檔案
   if (data.photoFile && data.photoFile.buffer) {
     form.append(
       process.env.RAGIC_FIELD_PHOTO || "1054243",
@@ -31,7 +30,7 @@ async function createRepairRecord(data) {
     );
   }
 
-  console.log("正在以 multipart/form-data 格式發送資料至 Ragic...");
+  console.log("正在以 multipart/form-data 傳送資料至 Ragic...");
 
   const response = await axios.post(ragicApiUrl, form, {
     headers: {
