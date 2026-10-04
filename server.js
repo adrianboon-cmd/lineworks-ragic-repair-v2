@@ -120,3 +120,23 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`伺服器正在運行於 port ${PORT}`);
 });
+// 新增：處理案件查詢請求
+app.get("/api/query", async (req, res) => {
+    try {
+        const keyword = req.query.keyword;
+        if (!keyword) {
+            return res.status(400).json({ success: false, error: "請提供查詢關鍵字" });
+        }
+
+        console.log(`收到查詢請求，關鍵字: ${keyword}`);
+        const searchResults = await ragicService.searchRepairRecords(keyword);
+
+        res.json({
+            success: true,
+            data: searchResults
+        });
+    } catch (error) {
+        console.error("查詢 API 發生錯誤:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
