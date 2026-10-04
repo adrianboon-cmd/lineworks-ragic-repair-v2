@@ -17,21 +17,22 @@ async function createRepairRecord(data) {
     [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || ""
   };
 
-  // 強制將前端傳過來的 base64 轉為 Ragic 檔案上傳欄位 (1054243) 所需的標準格式
+  // 💡 關鍵修正：嚴格按照 Ragic 規格處理圖片上傳欄位 1054243
   if (data.imageBase64) {
-    let cleanBase64 = data.imageBase64;
-    // 如果包含 data:image/...;base64, 前綴，必須將其切掉，只留純 base64 字串
-    if (cleanBase64.includes(',')) {
-      cleanBase64 = cleanBase64.split(',')[1];
+    let base64String = data.imageBase64;
+    
+    // 如果含有 data:image/xxx;base64, 前綴，必須切掉，只留純 base64 內容
+    if (base64String.includes(',')) {
+      base64String = base64String.split(',')[1];
     }
 
     payload["1054243"] = {
-      name: data.imageName || "repair_photo.jpg",
-      file: cleanBase64
+      name: data.imageName || "repair_image.jpg",
+      file: base64String
     };
   }
 
-  console.log("正在發送包含圖片的 Payload 至 Ragic (欄位 1054243)...");
+  console.log("正在發送包含圖片的 Payload 至 Ragic...");
 
   const response = await fetch(ragicApiUrl, {
     method: "POST",
