@@ -4,7 +4,7 @@ const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const multer = require("multer");
-const ragicService = require("./src/ragic.js"); // 導入您原本的 ragic 服務
+const ragicService = require("./src/ragic.js");
 
 const app = express();
 app.use(express.json());
@@ -77,7 +77,7 @@ async function sendBotMessage(userId, text) {
   }
 }
 
-// 接收前端報修表單 API（結合圖片上傳與原本的 ragicService）
+// 接收前端報修表單 API（將完整的圖片檔案物件交給 ragicService 處理）
 app.post("/api/repairs", upload.single('image'), async (req, res) => {
   try {
     console.log("收到前端報修表單資料:", req.body);
@@ -86,18 +86,13 @@ app.post("/api/repairs", upload.single('image'), async (req, res) => {
     const formData = req.body;
     const imageFile = req.file;
 
-    // 將資料與圖片檔案包裝後交給 ragicService 處理
+    // 將表單資料與 multer 收到的完整檔案物件包裝
     const repairData = {
       ...formData,
-      ...(imageFile && {
-        photoUrl: {
-          value: imageFile.buffer.toString('base64'),
-          name: imageFile.originalname
-        }
-      })
+      photoFile: imageFile // 傳遞包含 buffer 的檔案物件供 FormData 使用
     };
 
-    // 呼叫原本寫好的 ragicService 寫入資料庫
+    // 呼叫 ragicService 寫入資料庫
     const result = await ragicService.createRepairRecord(repairData);
     console.log("Ragic 寫入結果:", result);
 
