@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>設備報修系統</title>
+    <title>🔧設備報修系統</title>
     <link rel="stylesheet" href="style.css">
     <!-- 引入 LINE WORKS WOFF SDK -->
     <script src="https://lw-static.worksmobile.com/woff/woff.js"></script>
@@ -15,31 +15,31 @@
         <!-- 報修表單 -->
         <form id="repairForm">
             <div class="form-group">
-                <label for="reporter">填報人：</label>
+                <label for="reporter">👤 填報人：</label>
                 <input type="text" id="reporter" required placeholder="請輸入您的姓名">
             </div>
 
             <div class="form-group">
-                <label for="equipmentName">設備名稱：</label>
+                <label for="equipmentName">🪛 設備名稱：</label>
                 <input type="text" id="equipmentName" required placeholder="例如：印表機、冷氣">
             </div>
 
             <div class="form-group">
                 <label for="urgency">緊急程度：</label>
                 <select id="urgency">
-                    <option value="一般">一般</option>
-                    <option value="緊急">緊急</option>
-                    <option value="非常緊急">非常緊急</option>
+                    <option value="一般">🟢 一般</option>
+                    <option value="緊急">🟠 緊急</option>
+                    <option value="非常緊急">🔴 非常緊急</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="description">故障描述：</label>
+                <label for="description">🖋️ 故障描述：</label>
                 <textarea id="description" rows="4" required placeholder="請詳細描述設備狀況..."></textarea>
             </div>
 
             <div class="form-group">
-                <label for="image">上傳照片 (選填)：</label>
+                <label for="image">📸 上傳照片 (選填)：</label>
                 <input type="file" id="image" accept="image/*">
             </div>
 
