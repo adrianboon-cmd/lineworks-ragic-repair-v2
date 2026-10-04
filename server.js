@@ -8,15 +8,14 @@ const ragicService = require("./src/ragic.js");
 const app = express();
 app.use(express.json({ limit: '10mb' })); // 支援較大的 Base64 圖片 JSON 傳輸
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(path ? express.static(path.join(__dirname, "public")) : (req, res, next) => next());
 
-// 取得 LINE WORKS 存取 Token
+// 取得 LINE WORKS 存取 Token（參考您先前專案的穩健設計）
 async function getAccessToken() {
     try {
         const clientId = process.env.LINE_WORKS_CLIENT_ID;
         const clientSecret = process.env.LINE_WORKS_CLIENT_SECRET;
         const privateKey = process.env.LINE_WORKS_PRIVATE_KEY;
-        const botNo = process.env.LINE_WORKS_BOT_NO;
 
         if (!clientId || !clientSecret || !privateKey) {
             console.log("缺少 LINE WORKS 認證環境變數，略過 Token 取得");
@@ -50,7 +49,7 @@ async function getAccessToken() {
     }
 }
 
-// 接收前端報修表單並寫入 Ragic，同時發送 LINE WORKS 通知
+// 接收前端報修表單：完整保留您的 Ragic 寫入，並安全加入聊天室推播
 app.post("/api/repairs", async (req, res) => {
     try {
         console.log("收到前端報修表單資料:", {
@@ -63,18 +62,17 @@ app.post("/api/repairs", async (req, res) => {
             hasImage: !!req.body.imageBase64
         });
 
-        // 1. 呼叫 Ragic 服務寫入資料
+        // 1. 完整保留原有的 Ragic 寫入邏輯
         const ragicResult = await ragicService.createRepairRecord(req.body);
         const repairNo = ragicResult.repairNo || "已建立";
 
-        // 2. 如果使用者有帶入 userId，則主動發送聊天室通知
+        // 2. 安全地發送 LINE WORKS 個人聊天室通知（若有抓到 userId 才會執行）
         const userId = req.body.userId;
         if (userId) {
             const accessToken = await getAccessToken();
             const botNo = process.env.LINE_WORKS_BOT_NO;
 
             if (accessToken && botNo) {
-                // 取得 API ID（通常與 Client ID 相同或由環境變數提供，若無可用預設或共用變數）
                 const apiId = process.env.LINE_WORKS_API_ID || process.env.LINE_WORKS_CLIENT_ID;
 
                 const messagePayload = {
@@ -102,6 +100,7 @@ app.post("/api/repairs", async (req, res) => {
             console.log("未取得 userId，略過發送 LINE WORKS 個人聊天室通知");
         }
 
+        // 回傳結果給前端
         res.json({
             success: true,
             repairNo: repairNo,
