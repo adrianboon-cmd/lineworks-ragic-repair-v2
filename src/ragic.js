@@ -1,5 +1,4 @@
-const axios = require("axios");
-const FormData = require("form-data");
+const fetch = require("node-fetch");
 
 async function createRepairRecord(data) {
   const ragicApiUrl = process.env.RAGIC_BASE_URL || process.env.RAGIC_API_URL;
@@ -9,38 +8,47 @@ async function createRepairRecord(data) {
     throw new Error("缺少 Ragic API 網址環境變數");
   }
 
-  // 使用 FormData 包裝文字與檔案，符合 Ragic 附件上傳需求
-  const form = new FormData();
+  // 對應 Ragic 各欄位的 Field ID
+  const payload = {
+    [process.env.RAGIC_FIELD_REPORTER || "1054240"]: data.reporter || "",
+    [process.env.RAGIC_FIELD_EQUIPMENT || "1054238"]: data.equipmentName || "",
+    [process.env.RAGIC_FIELD_PRIORITY || "1054336"]: data.urgency || "一般",
+    [process.env.RAGIC_FIELD_DESCRIPTION || "1054242"]: data.description || "",
+    [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || ""
+  };
 
-  form.append(process.env.RAGIC_FIELD_REPORTER || "1054240", data.reporter || "");
-  form.append(process.env.RAGIC_FIELD_EQUIPMENT || "1054238", data.equipmentName || "");
-  form.append(process.env.RAGIC_FIELD_PRIORITY || "1054336", data.urgency || "一般");
-  form.append(process.env.RAGIC_FIELD_DESCRIPTION || "1054242", data.description || "");
-  form.append(process.env.RAGIC_FIELD_TIME || "1054239", data.repairTime || "");
+  // 💡 將前端傳過來的 Base64 圖片正確轉換並放入 Ragic 附件欄位
+  if (data.imageBase64) {
+    let base64Data = data.imageBase64;
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
+    }
 
-  // 檢查並附加圖片檔案
-  if (data.photoFile && data.photoFile.buffer) {
-    form.append(
-      process.env.RAGIC_FIELD_PHOTO || "1054243",
-      data.photoFile.buffer,
-      {
-        filename: data.photoFile.originalname || "repair_image.jpg",
-        contentType: data.photoFile.mimetype || "image/jpeg"
-      }
-    );
+    payload[process.env.RAGIC_FIELD_PHOTO || "1054243"] = {
+      name: data.imageName || "repair_photo.jpg",
+      file: base64Data
+    };
   }
 
-  console.log("正在以 multipart/form-data 傳送資料至 Ragic...");
+  console.log("正在發送包含圖片的 Payload 至 Ragic...");
 
-  const response = await axios.post(ragicApiUrl, form, {
+  const response = await fetch(ragicApiUrl, {
+    method: "POST",
     headers: {
       ...(ragicApiKey && { 'Authorization': `Basic ${Buffer.from(ragicApiKey + ':').toString('base64')}` }),
-      ...form.getHeaders()
-    }
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   });
 
-  console.log("Ragic API 回應:", response.data);
-  return response.data;
+  const result = await response.json();
+  console.log("Ragic API 回應:", result);
+
+  if (!response.ok) {
+    throw new Error(`Ragic API 寫入失敗: ${JSON.stringify(result)}`);
+  }
+
+  return result;
 }
 
 module.exports = {
