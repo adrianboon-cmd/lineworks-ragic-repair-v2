@@ -4,7 +4,9 @@ let currentUserId = "";
 async function initWoff() {
     if (typeof woff !== "undefined") {
         try {
+            // 修正為您目前 Developer Console 上的正確 WOFF ID
             await woff.init({ woffId: "-VMtnIBToJBYVu2OoHwKTw" });
+            
             if (woff.isLoggedIn && woff.isLoggedIn()) {
                 const profile = await woff.getProfile();
                 if (profile && profile.userId) {
@@ -76,7 +78,7 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         urgency,
         description,
         repairTime,
-        userId: currentUserId, // 傳遞抓到的 userId
+        userId: currentUserId, // 傳遞正確抓到的 userId
         imageBase64,
         imageName
     };
