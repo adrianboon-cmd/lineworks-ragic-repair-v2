@@ -69,7 +69,6 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         const result = await response.json();
 
         if (result.success) {
-            // 隱藏表單，顯示成功區塊與填寫的內容
             document.getElementById("repairForm").style.display = "none";
             document.getElementById("resultContainer").style.display = "block";
 
@@ -91,19 +90,30 @@ document.getElementById("repairForm").addEventListener("submit", async function(
     }
 });
 
-// 點擊「申請新的報修」按鈕：重設表單並切換回填寫畫面
+// 點擊「申請新的報修」
 document.getElementById("newRepairBtn").addEventListener("click", function() {
     document.getElementById("repairForm").reset();
     document.getElementById("repairForm").style.display = "block";
     document.getElementById("resultContainer").style.display = "none";
 });
 
-// 點擊「關閉」按鈕：嘗試關閉 WOFF 視窗，若無法關閉則導向空白或提示
+// 點擊「關閉」按鈕：優化處理方式
 document.getElementById("closeWindowBtn").addEventListener("click", function() {
     if (typeof woff !== "undefined" && woff.closeWindow) {
         woff.closeWindow();
     } else {
-        window.close();
-        alert("視窗已可手動關閉");
+        // 如果在一般瀏覽器無法直接關閉，改為導向空白頁或清除畫面
+        try {
+            window.close();
+        } catch (e) {
+            // 若瀏覽器阻擋 window.close()，直接清空畫面並顯示感謝提示
+            document.body.innerHTML = `
+                <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+                    <h2>😊 感謝您的填寫</h2>
+                    <p>您已完成報修，可以安全關閉此分頁或返回 LINE WORKS。</p>
+                    <button onclick="location.reload()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">返回填寫新表單</button>
+                </div>
+            `;
+        }
     }
 });
