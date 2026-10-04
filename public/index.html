@@ -6,13 +6,12 @@
     <title>設備報修系統</title>
     <link rel="stylesheet" href="style.css">
     <!-- 引入 LINE WORKS WOFF SDK -->
-    <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/sdk/3.6.0/sdk.js"></script>
+    <script src="https://lw-static.worksmobile.com/woff/woff.js"></script>
 </head>
 <body>
     <div class="container">
-        <h2>🔧 設備報修系統</h2>
-        <p class="subtitle">LINE WORKS × Ragic 設備報修平台</p>
-
+        <h2>設備報修填報</h2>
+        
         <!-- 報修表單 -->
         <form id="repairForm">
             <div class="form-group">
@@ -22,15 +21,15 @@
 
             <div class="form-group">
                 <label for="equipmentName">設備名稱：</label>
-                <input type="text" id="equipmentName" required placeholder="例如：印表機、冷氣、投影機">
+                <input type="text" id="equipmentName" required placeholder="例如：印表機、冷氣">
             </div>
 
             <div class="form-group">
                 <label for="urgency">緊急程度：</label>
                 <select id="urgency">
-                    <option value="一般">🟢 一般</option>
-                    <option value="緊急">🟠 緊急</option>
-                    <option value="非常緊急">🔴 非常緊急</option>
+                    <option value="一般">一般</option>
+                    <option value="緊急">緊急</option>
+                    <option value="非常緊急">非常緊急</option>
                 </select>
             </div>
 
@@ -44,25 +43,24 @@
                 <input type="file" id="image" accept="image/*">
             </div>
 
-            <button type="submit" id="submitBtn" class="btn-submit">送出報修單</button>
+            <button type="submit" id="submitBtn">送出報修單</button>
         </form>
 
-<!-- 成功送出後的結果區塊（初始隱藏） -->
-<div id="resultContainer" style="display: none;" class="result-box">
-    <h3>🎉 報修單已成功送出！</h3>
-    <p><strong>案件編號：</strong> <span id="resRepairNo"></span></p>
-    <p><strong>填報人：</strong> <span id="resReporter"></span></p>
-    <p><strong>設備名稱：</strong> <span id="resEquipment"></span></p>
-    <p><strong>緊急程度：</strong> <span id="resUrgency"></span></p>
-    <p><strong>故障描述：</strong> <span id="resDescription"></span></p>
-    <p><strong>填報時間：</strong> <span id="resTime"></span></p>
-    <p class="notify-text">📩 系統已透過 LINE WORKS 機器人發送通知給您！</p>
-
-    <!-- 申請新的報修按鈕（使用與送出按鈕相同的樣式類別 btn-submit） -->
-    <div class="button-group" style="margin-top: 28px;">
-        <button type="button" id="newRepairBtn" class="btn-submit">申請新的報修</button>
+        <!-- 提交成功後的顯示畫面 -->
+        <div id="resultContainer" style="display: none;">
+            <div class="success-box">
+                <h3>🎉 報修單已成功送出！</h3>
+                <p><strong>案件編號：</strong><span id="resRepairNo"></span></p>
+                <p><strong>填報人：</strong><span id="resReporter"></span></p>
+                <p><strong>設備名稱：</strong><span id="resEquipment"></span></p>
+                <p><strong>緊急程度：</strong><span id="resUrgency"></span></p>
+                <p><strong>故障描述：</strong><span id="resDescription"></span></p>
+                <p><strong>填報時間：</strong><span id="resTime"></span></p>
+                <p class="notice">系統已同步發送通知至您的 LINE WORKS 聊天室！</p>
+            </div>
+            <button id="newRepairBtn" class="secondary-btn">申請新的報修</button>
+        </div>
     </div>
-</div>
 
     <script src="app.js"></script>
 </body>
