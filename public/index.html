@@ -5,174 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>設備報修系統</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 💡 關鍵：載入 LINE WORKS WOFF SDK -->
-    <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js"></script>
+    <!-- 引入 LINE WORKS WOFF SDK -->
+    <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/sdk/3.6.0/sdk.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1 class="header-title">🔧 設備報修系統</h1>
-        <p class="header-subtitle">LINE WORKS × Ragic 報修平台</p>
+        <h2>🔧 設備報修系統</h2>
+        <p class="subtitle">LINE WORKS × Ragic 設備報修平台</p>
 
-        <!-- 報修表單區塊 -->
+        <!-- 報修表單 -->
         <form id="repairForm">
-            <h2>🛠️ LINE WORKS 設備報修</h2>
-            <p class="subtitle">請填寫故障狀況並上傳照片，系統將自動建立 Ragic 報修單。</p>
-
             <div class="form-group">
-                <label for="reporter">填報人 <span class="required">*</span></label>
-                <input type="text" id="reporter" name="reporter" required placeholder="請輸入您的姓名">
+                <label for="reporter">填報人：</label>
+                <input type="text" id="reporter" required placeholder="請輸入您的姓名">
             </div>
 
             <div class="form-group">
-                <label for="equipmentName">設備名稱 <span class="required">*</span></label>
-                <input type="text" id="equipmentName" name="equipmentName" required placeholder="例如：印表機、會議室投影機">
+                <label for="equipmentName">設備名稱：</label>
+                <input type="text" id="equipmentName" required placeholder="例如：印表機、冷氣、投影機">
             </div>
 
             <div class="form-group">
-                <label for="urgency">緊急程度 <span class="required">*</span></label>
-                <select id="urgency" name="urgency" required>
-                    <option value="一般">一般</option>
-                    <option value="緊急">緊急</option>
-                    <option value="非常緊急">非常緊急</option>
+                <label for="urgency">緊急程度：</label>
+                <select id="urgency">
+                    <option value="一般">🟢 一般</option>
+                    <option value="緊急">🟠 緊急</option>
+                    <option value="非常緊急">🔴 非常緊急</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="description">故障描述 <span class="required">*</span></label>
-                <textarea id="description" name="description" rows="4" required placeholder="請詳細描述設備故障狀況..."></textarea>
+                <label for="description">故障描述：</label>
+                <textarea id="description" rows="4" required placeholder="請詳細描述設備狀況..."></textarea>
             </div>
 
             <div class="form-group">
-                <label for="image">上傳照片（選填）</label>
-                <input type="file" id="image" name="image" accept="image/*">
+                <label for="image">上傳照片 (選填)：</label>
+                <input type="file" id="image" accept="image/*">
             </div>
 
-            <!-- 隱藏欄位：儲存 LINE WORKS 使用者 ID 及報修時間 -->
-            <input type="hidden" id="userId" name="userId">
-            <input type="hidden" id="repairTime" name="repairTime">
-
-            <button type="submit" id="submitBtn" class="submit-btn">送出報修單</button>
+            <button type="submit" id="submitBtn" class="btn-submit">送出報修單</button>
         </form>
 
-        <!-- 提交成功後的結果顯示區塊 -->
-        <div id="resultContainer" class="result-container" style="display: none;">
-            <h2>🎉 報修單已成功送出！</h2>
-            <div class="result-details">
-                <p><strong>案件編號：</strong> <span id="resRepairNo"></span></p>
-                <p><strong>填報人：</strong> <span id="resReporter"></span></p>
-                <p><strong>設備名稱：</strong> <span id="resEquipment"></span></p>
-                <p><strong>緊急程度：</strong> <span id="resUrgency"></span></p>
-                <p><strong>故障描述：</strong> <span id="resDescription"></span></p>
-                <p><strong>填報時間：</strong> <span id="resTime"></span></p>
+        <!-- 成功送出後的結果區塊（初始隱藏） -->
+        <div id="resultContainer" style="display: none;" class="result-box">
+            <h3>🎉 報修單已成功送出！</h3>
+            <p><strong>案件編號：</strong> <span id="resRepairNo"></span></p>
+            <p><strong>填報人：</strong> <span id="resReporter"></span></p>
+            <p><strong>設備名稱：</strong> <span id="resEquipment"></span></p>
+            <p><strong>緊急程度：</strong> <span id="resUrgency"></span></p>
+            <p><strong>故障描述：</strong> <span id="resDescription"></span></p>
+            <p><strong>填報時間：</strong> <span id="resTime"></span></p>
+            <p class="notify-text">📩 系統已透過 LINE WORKS 機器人發送通知給您！</p>
+
+            <!-- 新增的操作按鈕 -->
+            <div class="button-group" style="margin-top: 20px; display: flex; gap: 10px;">
+                <button type="button" id="newRepairBtn" class="btn-submit" style="background-color: #4CAF50;">申請新的報修</button>
+                <button type="button" id="closeWindowBtn" class="btn-submit" style="background-color: #6c757d;">關閉</button>
             </div>
-            <p class="notification-hint">📩 系統已透過 LINE WORKS 機器人發送通知給您！</p>
         </div>
     </div>
 
-    <script>
-        // 自動填入當前時間
-        function updateRepairTime() {
-            const now = new Date();
-            const timeString = now.getFullYear() + '/' +
-                String(now.getMonth() + 1).padStart(2, '0') + '/' +
-                String(now.getDate()).padStart(2, '0') + ' ' +
-                String(now.getHours()).padStart(2, '0') + ':' +
-                String(now.getMinutes()).padStart(2, '0') + ':' +
-                String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('repairTime').value = timeString;
-        }
-
-        // 初始化 WOFF SDK 取得使用者資訊
-        window.addEventListener('DOMContentLoaded', () => {
-            updateRepairTime();
-
-            if (typeof woff !== 'undefined') {
-                woff.init({ woffId: '您的WOFF_ID' }) // 請根據您的專案設定
-                .then(() => {
-                    return woff.getContext();
-                })
-                .then(context => {
-                    if (context && context.userId) {
-                        document.getElementById('userId').value = context.userId;
-                    }
-                })
-                .catch(err => {
-                    console.log('WOFF 初始化或取得 Context 失敗，改用預設模擬模式', err);
-                });
-            }
-        });
-
-        // 輔助函式：將檔案轉成 Base64
-        function convertFileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        // 提交表單事件處理
-        document.getElementById('repairForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = '處理中，請稍候...';
-
-            try {
-                const imageFile = document.getElementById('image').files[0];
-                let imageBase64 = null;
-                let imageName = null;
-
-                if (imageFile) {
-                    imageBase64 = await convertFileToBase64(imageFile);
-                    imageName = imageFile.name;
-                }
-
-                const formData = {
-                    reporter: document.getElementById('reporter').value,
-                    equipmentName: document.getElementById('equipmentName').value,
-                    urgency: document.getElementById('urgency').value,
-                    description: document.getElementById('description').value,
-                    repairTime: document.getElementById('repairTime').value,
-                    userId: document.getElementById('userId').value,
-                    imageBase64: imageBase64,
-                    imageName: imageName
-                };
-
-                const response = await fetch('/api/repairs', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // 隱藏表單，顯示成功結果
-                    document.getElementById('repairForm').style.display = 'none';
-                    document.getElementById('resultContainer').style.display = 'block';
-
-                    document.getElementById('resRepairNo').textContent = result.repairNo;
-                    document.getElementById('resReporter').textContent = formData.reporter;
-                    document.getElementById('resEquipment').textContent = formData.equipmentName;
-                    document.getElementById('resUrgency').textContent = formData.urgency;
-                    document.getElementById('resDescription').textContent = formData.description;
-                    document.getElementById('resTime').textContent = formData.repairTime;
-                } else {
-                    alert('送出失敗：' + (result.error || '未知錯誤'));
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '送出報修單';
-                }
-            } catch (error) {
-                console.error('發生錯誤:', error);
-                alert('送出過程發生異常，請稍後再試。');
-                submitBtn.disabled = false;
-                submitBtn.textContent = '送出報修單';
-            }
-        });
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
