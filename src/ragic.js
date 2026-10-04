@@ -64,8 +64,8 @@ module.exports = {
 async function searchRepairRecords(keyword) {
     try {
         const apiKey = process.env.RAGIC_API_KEY;
-        const ragicUrl = process.env.RAGIC_API_URL; // 例如您的 Ragic API 網址
-
+        const ragicUrl = process.env.RAGIC_BASE_URL; // 改成跟 Render 上一致的名稱
+      
         if (!ragicUrl || !apiKey) {
             throw new Error("缺少 Ragic API 設定");
         }
