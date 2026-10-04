@@ -1,25 +1,40 @@
 let currentUserId = "";
 
-if (typeof woff !== "undefined") {
-    woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
-        .then(() => {
+// 初始化 WOFF 並取得 UserId
+async function initWoff() {
+    if (typeof woff !== "undefined") {
+        try {
+            await woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" });
             if (woff.isLoggedIn && woff.isLoggedIn()) {
-                return woff.getProfile();
-            } else if (woff.getProfile) {
-                return woff.getProfile();
+                const profile = await woff.getProfile();
+                if (profile && profile.userId) {
+                    currentUserId = profile.userId;
+                    console.log("成功取得 LINE WORKS UserId:", currentUserId);
+                }
             }
-        })
-        .then((profile) => {
-            if (profile && profile.userId) {
-                currentUserId = profile.userId;
-                console.log("成功取得 LINE WORKS UserId:", currentUserId);
-            }
-        })
-        .catch((err) => console.error("WOFF 取得 Profile 失敗:", err));
+        } catch (err) {
+            console.error("WOFF 初始化或取得 Profile 失敗:", err);
+        }
+    }
 }
+
+// 網頁載入時立刻執行初始化
+initWoff();
 
 document.getElementById("repairForm").addEventListener("submit", async function(event) {
     event.preventDefault();
+
+    // 如果剛才還沒抓到 userId，嘗試在送出瞬間再抓一次
+    if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
+        try {
+            const profile = await woff.getProfile();
+            if (profile && profile.userId) {
+                currentUserId = profile.userId;
+            }
+        } catch (e) {
+            console.error("送出時取得 Profile 失敗:", e);
+        }
+    }
 
     const submitBtn = document.getElementById("submitBtn");
     submitBtn.disabled = true;
@@ -52,10 +67,12 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         urgency,
         description,
         repairTime,
-        userId: currentUserId,
+        userId: currentUserId, // 確保這裡帶入抓到的 userId
         imageBase64,
         imageName
     };
+
+    console.log("準備送出 Payload，UserId 狀態:", currentUserId);
 
     try {
         const response = await fetch("/api/repairs", {
