@@ -115,11 +115,6 @@ app.post("/api/repairs", async (req, res) => {
         });
     }
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`伺服器正在運行於 port ${PORT}`);
-});
 // 新增：處理案件查詢請求
 app.get("/api/query", async (req, res) => {
     try {
@@ -140,3 +135,9 @@ app.get("/api/query", async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`伺服器正在運行於 port ${PORT}`);
+});
+
