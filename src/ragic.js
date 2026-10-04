@@ -60,6 +60,7 @@ async function createRepairRecord(data) {
 module.exports = {
   createRepairRecord
 };
+const axios = require('axios'); // 務必加上這行
 // 查詢報修案件（根據填報人或案件編號篩選）
 async function searchRepairRecords(keyword) {
     try {
