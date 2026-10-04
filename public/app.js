@@ -1,4 +1,4 @@
-let currentUserId = ""; // 1. 初始化 WOFF 取得 userId (供備用或追蹤用)
+let currentUserId = "";
 
 if (typeof woff !== "undefined") {
     woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" })
@@ -25,14 +25,12 @@ document.getElementById("repairForm").addEventListener("submit", async function(
     submitBtn.disabled = true;
     submitBtn.textContent = "資料傳送中...";
 
-    // 取得表單欄位值
     const reporter = document.getElementById("reporter").value;
     const equipmentName = document.getElementById("equipmentName").value;
     const urgency = document.getElementById("urgency").value;
     const description = document.getElementById("description").value;
-    const repairTime = document.getElementById("repairTime") ? document.getElementById("repairTime").value : new Date().toISOString();
+    const repairTime = new Date().toLocaleString('zh-TW', { hour12: false });
     
-    // 取得上傳的圖片檔案
     const imageInput = document.getElementById("image");
     let imageBase64 = null;
     let imageName = null;
@@ -58,7 +56,7 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         imageBase64,
         imageName
     };
-console.log("前端準備送出的 imageBase64 內容:", imageBase64);
+
     try {
         const response = await fetch("/api/repairs", {
             method: "POST",
@@ -71,8 +69,16 @@ console.log("前端準備送出的 imageBase64 內容:", imageBase64);
         const result = await response.json();
 
         if (result.success) {
-            alert("報修單送出成功！");
-            document.getElementById("repairForm").reset();
+            // 隱藏表單，顯示成功區塊與填寫的內容
+            document.getElementById("repairForm").style.display = "none";
+            document.getElementById("resultContainer").style.display = "block";
+
+            document.getElementById("resRepairNo").textContent = result.repairNo || "已建立";
+            document.getElementById("resReporter").textContent = reporter;
+            document.getElementById("resEquipment").textContent = equipmentName;
+            document.getElementById("resUrgency").textContent = urgency;
+            document.getElementById("resDescription").textContent = description;
+            document.getElementById("resTime").textContent = repairTime;
         } else {
             alert("送出失敗: " + (result.error || "未知錯誤"));
         }
@@ -82,5 +88,22 @@ console.log("前端準備送出的 imageBase64 內容:", imageBase64);
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "送出報修單";
+    }
+});
+
+// 點擊「申請新的報修」按鈕：重設表單並切換回填寫畫面
+document.getElementById("newRepairBtn").addEventListener("click", function() {
+    document.getElementById("repairForm").reset();
+    document.getElementById("repairForm").style.display = "block";
+    document.getElementById("resultContainer").style.display = "none";
+});
+
+// 點擊「關閉」按鈕：嘗試關閉 WOFF 視窗，若無法關閉則導向空白或提示
+document.getElementById("closeWindowBtn").addEventListener("click", function() {
+    if (typeof woff !== "undefined" && woff.closeWindow) {
+        woff.closeWindow();
+    } else {
+        window.close();
+        alert("視窗已可手動關閉");
     }
 });
