@@ -4,7 +4,7 @@ let currentUserId = "";
 async function initWoff() {
     if (typeof woff !== "undefined") {
         try {
-            await woff.init({ woffId: "WiPs90_DcB_oVcPYkXSOrg" });
+            await woff.init({ woffId: "-VMtnIBToJBYVu2OoHwKTw" });
             if (woff.isLoggedIn && woff.isLoggedIn()) {
                 const profile = await woff.getProfile();
                 if (profile && profile.userId) {
