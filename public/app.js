@@ -1,5 +1,6 @@
 let currentUserId = "";
 
+// 初始化 WOFF 取得使用者資訊
 async function initWoff() {
     if (typeof woff !== "undefined") {
         try {
@@ -8,26 +9,29 @@ async function initWoff() {
                 const profile = await woff.getProfile();
                 if (profile && profile.userId) {
                     currentUserId = profile.userId;
-                    console.log("【WOFF 成功】取得 UserId:", currentUserId);
+                    console.log("成功取得 LINE WORKS UserId:", currentUserId);
                 }
             } else {
-                // 若未登入，強制要求 WOFF 登入
+                // 若未登入，強制導向登入
                 woff.login();
             }
         } catch (err) {
-            console.error("【WOFF 錯誤】初始化失敗，請確認是否在 LINE WORKS App 內開啟:", err);
+            console.error("WOFF 初始化失敗:", err);
         }
     } else {
-        console.warn("【警告】未檢測到 WOFF SDK，請在 LINE WORKS 應用程式內開啟此網頁。");
+        console.warn("未偵測到 WOFF SDK");
     }
 }
 
-initWoff();
+// 頁面載入時執行
+window.addEventListener("DOMContentLoaded", () => {
+    initWoff();
+});
 
 document.getElementById("repairForm").addEventListener("submit", async function(event) {
     event.preventDefault();
 
-    // 如果還是空的，再次嘗試取得
+    // 提交前最後一次確認
     if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
         try {
             const profile = await woff.getProfile();
@@ -39,7 +43,7 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         }
     }
 
-    console.log("最終送出的 UserId 狀態:", currentUserId ? currentUserId : "【注意】目前 userId 為空，無法發送聊天室通知！");
+    console.log("準備送出，當前 userId 狀態:", currentUserId);
 
     const submitBtn = document.getElementById("submitBtn");
     submitBtn.disabled = true;
@@ -72,7 +76,7 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         urgency,
         description,
         repairTime,
-        userId: currentUserId,
+        userId: currentUserId, // 傳遞抓到的 userId
         imageBase64,
         imageName
     };
