@@ -1,6 +1,5 @@
 let currentUserId = "";
 
-// 初始化 WOFF 並確保在畫面載入時就抓到 userId
 async function initWoff() {
     if (typeof woff !== "undefined") {
         try {
@@ -9,28 +8,26 @@ async function initWoff() {
                 const profile = await woff.getProfile();
                 if (profile && profile.userId) {
                     currentUserId = profile.userId;
-                    console.log("成功取得 LINE WORKS UserId:", currentUserId);
+                    console.log("【WOFF 成功】取得 UserId:", currentUserId);
                 }
             } else {
-                // 如果沒登入，強制呼叫登入或抓 Profile
-                const profile = await woff.getProfile();
-                if (profile && profile.userId) {
-                    currentUserId = profile.userId;
-                }
+                // 若未登入，強制要求 WOFF 登入
+                woff.login();
             }
         } catch (err) {
-            console.error("WOFF 初始化失敗:", err);
+            console.error("【WOFF 錯誤】初始化失敗，請確認是否在 LINE WORKS App 內開啟:", err);
         }
+    } else {
+        console.warn("【警告】未檢測到 WOFF SDK，請在 LINE WORKS 應用程式內開啟此網頁。");
     }
 }
 
-// 立即執行初始化
 initWoff();
 
 document.getElementById("repairForm").addEventListener("submit", async function(event) {
     event.preventDefault();
 
-    // 雙重保險：如果前面還沒抓到，送出瞬間再抓一次
+    // 如果還是空的，再次嘗試取得
     if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
         try {
             const profile = await woff.getProfile();
@@ -38,9 +35,11 @@ document.getElementById("repairForm").addEventListener("submit", async function(
                 currentUserId = profile.userId;
             }
         } catch (e) {
-            console.error("送出時取得 Profile 失敗:", e);
+            console.error("提交瞬間取得 Profile 失敗:", e);
         }
     }
+
+    console.log("最終送出的 UserId 狀態:", currentUserId ? currentUserId : "【注意】目前 userId 為空，無法發送聊天室通知！");
 
     const submitBtn = document.getElementById("submitBtn");
     submitBtn.disabled = true;
@@ -73,12 +72,10 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         urgency,
         description,
         repairTime,
-        userId: currentUserId, // 確保這裡帶入抓到的 userId
+        userId: currentUserId,
         imageBase64,
         imageName
     };
-
-    console.log("準備送出 Payload，UserId 狀態:", currentUserId);
 
     try {
         const response = await fetch("/api/repairs", {
@@ -113,7 +110,6 @@ document.getElementById("repairForm").addEventListener("submit", async function(
     }
 });
 
-// 點擊「申請新的報修」按鈕：重設表單並切換回填寫畫面
 document.getElementById("newRepairBtn").addEventListener("click", function() {
     document.getElementById("repairForm").reset();
     document.getElementById("repairForm").style.display = "block";
