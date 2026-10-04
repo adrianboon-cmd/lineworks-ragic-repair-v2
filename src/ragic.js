@@ -17,18 +17,17 @@ async function createRepairRecord(data) {
     [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || ""
   };
 
-  // 💡 關鍵修正：嚴格按照 Ragic 規格處理圖片上傳欄位 1054243
+  // 處理圖片上傳欄位 (1054243)
   if (data.imageBase64) {
-    let base64String = data.imageBase64;
-    
-    // 如果含有 data:image/xxx;base64, 前綴，必須切掉，只留純 base64 內容
-    if (base64String.includes(',')) {
-      base64String = base64String.split(',')[1];
+    let cleanBase64 = data.imageBase64;
+    if (cleanBase64.includes(',')) {
+      cleanBase64 = cleanBase64.split(',')[1];
     }
 
+    // Ragic 官方 API 針對檔案/圖片上傳欄位的標準格式：物件包含 name 與 file
     payload["1054243"] = {
-      name: data.imageName || "repair_image.jpg",
-      file: base64String
+      name: data.imageName || "repair_photo.jpg",
+      file: cleanBase64
     };
   }
 
