@@ -60,3 +60,61 @@ async function createRepairRecord(data) {
 module.exports = {
   createRepairRecord
 };
+// 查詢報修案件（根據填報人或案件編號篩選）
+async function searchRepairRecords(keyword) {
+    try {
+        const apiKey = process.env.RAGIC_API_KEY;
+        const ragicUrl = process.env.RAGIC_API_URL; // 例如您的 Ragic API 網址
+
+        if (!ragicUrl || !apiKey) {
+            throw new Error("缺少 Ragic API 設定");
+        }
+
+        // 呼叫 Ragic API 取得整張表單的資料
+        const response = await axios.get(`${ragicUrl}?apiKey=${apiKey}`);
+        const allData = response.data;
+
+        let results = [];
+        // Ragic 回傳的通常是帶有 ID 作為 Key 的物件
+        for (const recordId in allData) {
+            if (Object.prototype.hasOwnProperty.call(allData, recordId)) {
+                const item = allData[recordId];
+                
+                const repairNo = String(item["案件編號"] || "");
+                const reporter = String(item["填報人"] || "");
+                const equipmentName = String(item["設備名稱"] || "");
+
+                // 只要案件編號、填報人或設備名稱包含關鍵字，就納入搜尋結果
+                if (
+                    repairNo.includes(keyword) || 
+                    reporter.includes(keyword) || 
+                    equipmentName.includes(keyword)
+                ) {
+                    results.push({
+                        repairNo: repairNo,
+                        repairTime: item["填報時間"] || "",
+                        reporter: reporter,
+                        equipmentName: equipmentName,
+                        description: item["故障描述"] || "",
+                        status: item["案件狀態"] || "處理中",
+                        progress: item["維修進度"] || "尚未更新",
+                        expectedDate: item["預計處理日期"] || "未排定"
+                    });
+                }
+            }
+        }
+
+        // 依案件編號或時間由新到舊排序
+        results.reverse();
+        return results;
+    } catch (error) {
+        console.error("Ragic 查詢失敗:", error.response?.data || error.message);
+        throw error;
+    }
+}
+
+// 記得把新函式 export 出去
+module.exports = {
+    createRepairRecord,
+    searchRepairRecords
+};
