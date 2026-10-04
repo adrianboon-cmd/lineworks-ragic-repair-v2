@@ -58,7 +58,7 @@ document.getElementById("repairForm").addEventListener("submit", async function(
         imageBase64,
         imageName
     };
-
+console.log("前端準備送出的 imageBase64 內容:", imageBase64);
     try {
         const response = await fetch("/api/repairs", {
             method: "POST",
