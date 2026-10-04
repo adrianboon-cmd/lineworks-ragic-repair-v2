@@ -8,7 +8,7 @@ async function createRepairRecord(data) {
     throw new Error("缺少 Ragic API 網址環境變數");
   }
 
-  // 建立對應 Ragic 各欄位的 Payload（明確指定圖片欄位編號 1054243）
+  // 建立對應 Ragic 各欄位的 Payload
   const payload = {
     [process.env.RAGIC_FIELD_REPORTER || "1054240"]: data.reporter || "",
     [process.env.RAGIC_FIELD_EQUIPMENT || "1054238"]: data.equipmentName || "",
@@ -17,20 +17,21 @@ async function createRepairRecord(data) {
     [process.env.RAGIC_FIELD_TIME || "1054239"]: data.repairTime || ""
   };
 
-  // 處理前端傳過來的 Base64 圖片並放入 1054243 欄位
+  // 強制將前端傳過來的 base64 轉為 Ragic 檔案上傳欄位 (1054243) 所需的標準格式
   if (data.imageBase64) {
-    let base64Data = data.imageBase64;
-    if (base64Data.includes(',')) {
-      base64Data = base64Data.split(',')[1];
+    let cleanBase64 = data.imageBase64;
+    // 如果包含 data:image/...;base64, 前綴，必須將其切掉，只留純 base64 字串
+    if (cleanBase64.includes(',')) {
+      cleanBase64 = cleanBase64.split(',')[1];
     }
 
     payload["1054243"] = {
       name: data.imageName || "repair_photo.jpg",
-      file: base64Data
+      file: cleanBase64
     };
   }
 
-  console.log("正在發送包含圖片 (欄位 1054243) 的 Payload 至 Ragic...");
+  console.log("正在發送包含圖片的 Payload 至 Ragic (欄位 1054243)...");
 
   const response = await fetch(ragicApiUrl, {
     method: "POST",
