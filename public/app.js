@@ -1,6 +1,6 @@
 let currentUserId = "";
 
-// 初始化 WOFF 並取得 UserId
+// 初始化 WOFF 並確保在畫面載入時就抓到 userId
 async function initWoff() {
     if (typeof woff !== "undefined") {
         try {
@@ -11,20 +11,26 @@ async function initWoff() {
                     currentUserId = profile.userId;
                     console.log("成功取得 LINE WORKS UserId:", currentUserId);
                 }
+            } else {
+                // 如果沒登入，強制呼叫登入或抓 Profile
+                const profile = await woff.getProfile();
+                if (profile && profile.userId) {
+                    currentUserId = profile.userId;
+                }
             }
         } catch (err) {
-            console.error("WOFF 初始化或取得 Profile 失敗:", err);
+            console.error("WOFF 初始化失敗:", err);
         }
     }
 }
 
-// 網頁載入時立刻執行初始化
+// 立即執行初始化
 initWoff();
 
 document.getElementById("repairForm").addEventListener("submit", async function(event) {
     event.preventDefault();
 
-    // 如果剛才還沒抓到 userId，嘗試在送出瞬間再抓一次
+    // 雙重保險：如果前面還沒抓到，送出瞬間再抓一次
     if (!currentUserId && typeof woff !== "undefined" && woff.getProfile) {
         try {
             const profile = await woff.getProfile();
